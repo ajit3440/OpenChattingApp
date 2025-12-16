@@ -1,0 +1,26 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Start Python HTTP Server",
+            "type": "shell",
+            "command": "python",
+            "args": ["-m", "http.server", "8000"],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Stop Python HTTP Server",
+            "type": "shell",
+            "command": "echo",
+            "args": ["Server stopped. Press Ctrl+C in the terminal to stop the server."],
+            "presentation": {
+                "reveal": "always"
+            }
+        }
+    ]
+}

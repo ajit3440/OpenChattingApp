@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="theme-color" content="#0095f6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>ChatApp - Messages</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💬</text></svg>">
     
@@ -27,9 +30,17 @@
                             </div>
                             <h5 class="mb-0" id="currentUserName">User</h5>
                         </div>
-                        <button class="btn btn-link text-dark" id="logoutBtn" title="Logout">
-                            <i class="bi bi-box-arrow-right fs-5"></i>
-                        </button>
+                        <div>
+                            <a href="feed.html" class="btn btn-link text-dark" title="Feed">
+                                <i class="bi bi-house-door fs-5"></i>
+                            </a>
+                            <a href="profile.html" class="btn btn-link text-dark" title="Profile">
+                                <i class="bi bi-person fs-5"></i>
+                            </a>
+                            <button class="btn btn-link text-dark" id="logoutBtn" title="Logout">
+                                <i class="bi bi-box-arrow-right fs-5"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -93,6 +104,9 @@
                     <!-- Chat Header -->
                     <div class="chat-header">
                         <div class="d-flex align-items-center p-3">
+                            <button class="btn btn-link text-dark mobile-back-btn d-md-none p-0 me-2" id="mobileBackBtn">
+                                <i class="bi bi-arrow-left fs-4"></i>
+                            </button>
                             <div class="user-avatar me-3" id="chatUserAvatar">
                                 <i class="bi bi-person-circle"></i>
                             </div>
@@ -100,6 +114,9 @@
                                 <h6 class="mb-0" id="chatUserName">User Name</h6>
                                 <small class="text-muted" id="chatUserStatus">Online</small>
                             </div>
+                            <button class="btn btn-link text-dark mobile-menu-btn d-md-none p-0" id="mobileMenuBtn">
+                                <i class="bi bi-list fs-3"></i>
+                            </button>
                         </div>
                     </div>
 

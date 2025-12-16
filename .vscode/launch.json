@@ -1,0 +1,34 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch ChatApp in Chrome",
+            "url": "http://localhost:8000",
+            "webRoot": "${workspaceFolder}",
+            "runtimeArgs": [
+                "--disable-web-security",
+                "--user-data-dir=${workspaceFolder}/.chrome-debug"
+            ]
+        },
+        {
+            "type": "msedge",
+            "request": "launch",
+            "name": "Launch ChatApp in Edge",
+            "url": "http://localhost:8000",
+            "webRoot": "${workspaceFolder}",
+            "runtimeArgs": [
+                "--disable-web-security",
+                "--user-data-dir=${workspaceFolder}/.edge-debug"
+            ]
+        },
+        {
+            "type": "chrome",
+            "request": "attach",
+            "name": "Attach to Chrome",
+            "port": 9222,
+            "webRoot": "${workspaceFolder}"
+        }
+    ]
+}
