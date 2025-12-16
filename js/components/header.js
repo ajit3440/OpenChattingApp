@@ -19,6 +19,9 @@ export function renderHeader() {
         return;
     }
 
+    const userName = user.displayName || user.email || 'U';
+    const initials = userName.charAt(0).toUpperCase();
+    
     headerDiv.innerHTML = `
         <nav class="navbar navbar-light bg-white border-bottom sticky-top">
             <div class="container-fluid">
@@ -32,17 +35,33 @@ export function renderHeader() {
                             0
                         </span>
                     </button>
-                    <img src="${user.photoURL || 'https://via.placeholder.com/40'}" 
-                         alt="Profile" 
-                         class="rounded-circle cursor-pointer" 
+                    <div class="rounded-circle cursor-pointer bg-primary text-white d-flex align-items-center justify-content-center" 
                          width="32" 
                          height="32" 
-                         style="cursor: pointer;"
-                         onclick="window.location.hash='/profile'">
+                         style="cursor: pointer; width: 32px; height: 32px; font-weight: bold;"
+                         onclick="window.location.hash='/profile'"
+                         id="header-avatar">
+                        ${initials}
+                    </div>
                 </div>
             </div>
         </nav>
     `;
+    
+    // Load image if available
+    if (user.photoURL) {
+        const img = new Image();
+        img.onload = function() {
+            const avatar = document.getElementById('header-avatar');
+            if (avatar) {
+                avatar.innerHTML = '';
+                avatar.style.backgroundImage = `url(${user.photoURL})`;
+                avatar.style.backgroundSize = 'cover';
+                avatar.style.backgroundPosition = 'center';
+            }
+        };
+        img.src = user.photoURL;
+    }
 
     // Setup notification badge
     setupNotificationBadge();

@@ -1,5 +1,5 @@
 // Profile Component (Own Profile)
-import { auth, db } from '../firebase-config.js';
+import { auth, db, storage } from '../firebase-config.js';
 import { router } from '../router.js';
 import { 
     collection,
@@ -14,7 +14,8 @@ import {
     serverTimestamp,
     arrayRemove
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-import { signOut } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+import { signOut, updateProfile } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-storage.js";
 
 let editProfileModal = null;
 let createPostModal = null;
@@ -33,8 +34,16 @@ export async function ProfileComponent(container) {
         <div class="container py-4" style="max-width: 600px; padding-bottom: 100px;">
             <!-- Profile Header -->
             <div class="profile-header text-center mb-4">
-                <div class="mb-3" id="profileAvatar" style="width: 100px; height: 100px; margin: 0 auto; border-radius: 50%; overflow: hidden; background: #f0f0f0; display: flex; align-items: center; justify-content: center;">
-                    <i class="bi bi-person-circle" style="font-size: 100px;"></i>
+                <div class="position-relative d-inline-block mb-3">
+                    <div id="profileAvatar" style="width: 100px; height: 100px; border-radius: 50%; overflow: hidden; background: #f0f0f0; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-person-circle" style="font-size: 100px;"></i>
+                    </div>
+                    <button class="btn btn-primary btn-sm rounded-circle position-absolute bottom-0 end-0" 
+                            style="width: 35px; height: 35px; padding: 0;"
+                            onclick="document.getElementById('profileImageInput').click()">
+                        <i class="bi bi-camera-fill"></i>
+                    </button>
+                    <input type="file" id="profileImageInput" accept="image/*" style="display: none;">
                 </div>
                 <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
                     <h3 class="mb-0" id="profileName">Loading...</h3>
@@ -93,6 +102,15 @@ export async function ProfileComponent(container) {
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
+                        <div class="mb-3 text-center">
+                            <div id="editProfileAvatar" class="mx-auto mb-2" style="width: 80px; height: 80px; border-radius: 50%; overflow: hidden; background: #f0f0f0; display: flex; align-items: center; justify-content: center;">
+                                <i class="bi bi-person-circle" style="font-size: 80px;"></i>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="document.getElementById('editProfileImage').click()">
+                                <i class="bi bi-camera me-1"></i>Change Photo
+                            </button>
+                            <input type="file" id="editProfileImage" accept="image/*" style="display: none;">
+                        </div>
                         <div class="mb-3">
                             <label class="form-label">Name</label>
                             <input type="text" class="form-control" id="editName" required>
@@ -229,6 +247,8 @@ export async function ProfileComponent(container) {
     document.getElementById('postImage').addEventListener('change', handleImagePreview);
     document.getElementById('privateAccountToggle').addEventListener('change', togglePrivacy);
     document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+    document.getElementById('profileImageInput').addEventListener('change', handleProfileImageUpload);
+    document.getElementById('editProfileImage').addEventListener('change', handleEditProfileImagePreview);
     
     // Modal listeners
     document.getElementById('followersModal').addEventListener('show.bs.modal', loadFollowersList);
@@ -250,6 +270,8 @@ export async function ProfileComponent(container) {
                 
                 if (userData.photoURL) {
                     document.getElementById('profileAvatar').innerHTML = 
+                        `<img src="${userData.photoURL}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
+                    document.getElementById('editProfileAvatar').innerHTML = 
                         `<img src="${userData.photoURL}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
                 }
                 
@@ -366,26 +388,157 @@ export async function ProfileComponent(container) {
 
     // Save profile
     async function saveProfile() {
+        const saveBtn = document.getElementById('saveProfileBtn');
         const name = document.getElementById('editName').value.trim();
         const bio = document.getElementById('editBio').value.trim();
+        const imageFile = document.getElementById('editProfileImage').files[0];
         
         if (!name) {
             showError('editError', 'Name is required');
             return;
         }
         
+        saveBtn.disabled = true;
+        
         try {
+            let photoURL = currentUser.photoURL;
+            let useAuthUpdate = false;
+            
+            // Upload new image if selected
+            if (imageFile) {
+                try {
+                    photoURL = await uploadProfileImage(imageFile);
+                    useAuthUpdate = true; // Storage URLs are short
+                } catch (storageError) {
+                    console.warn('Firebase Storage failed, using base64:', storageError);
+                    // Fallback to base64
+                    const reader = new FileReader();
+                    photoURL = await new Promise((resolve, reject) => {
+                        reader.onload = (e) => resolve(e.target.result);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(imageFile);
+                    });
+                    useAuthUpdate = false; // base64 too long for Auth
+                }
+            }
+            
+            // Update Firestore (always)
             await updateDoc(doc(db, 'users', currentUser.uid), {
                 displayName: name,
-                bio: bio
+                bio: bio,
+                photoURL: photoURL
             });
+            
+            // Update Auth profile (only if using Storage URL)
+            if (useAuthUpdate && photoURL) {
+                await updateProfile(currentUser, {
+                    displayName: name,
+                    photoURL: photoURL
+                });
+            } else {
+                // Update only name in Auth
+                await updateProfile(currentUser, {
+                    displayName: name
+                });
+            }
             
             editProfileModal.hide();
             await loadProfile();
         } catch (error) {
             console.error('Error updating profile:', error);
-            showError('editError', 'Failed to update profile');
+            showError('editError', 'Failed to update profile: ' + error.message);
+        } finally {
+            saveBtn.disabled = false;
         }
+    }
+
+    // Handle profile image upload (from main profile)
+    async function handleProfileImageUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        // Validate file
+        if (!file.type.startsWith('image/')) {
+            alert('Please select an image file');
+            return;
+        }
+        
+        if (file.size > 5 * 1024 * 1024) { // 5MB limit
+            alert('Image size must be less than 5MB');
+            return;
+        }
+        
+        // Show loading state
+        const avatar = document.getElementById('profileAvatar');
+        const originalContent = avatar.innerHTML;
+        avatar.innerHTML = '<div class="spinner-border text-primary" role="status"></div>';
+        
+        try {
+            // Try Firebase Storage first
+            try {
+                const photoURL = await uploadProfileImage(file);
+                
+                // Update Firestore
+                await updateDoc(doc(db, 'users', currentUser.uid), {
+                    photoURL: photoURL
+                });
+                
+                // Update Auth (Storage URLs are short enough)
+                await updateProfile(currentUser, {
+                    photoURL: photoURL
+                });
+                
+                avatar.innerHTML = 
+                    `<img src="${photoURL}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
+                return;
+            } catch (storageError) {
+                console.warn('Firebase Storage failed, using base64:', storageError);
+                
+                // Fallback to base64 (Firestore only - Auth has URL length limit)
+                const reader = new FileReader();
+                const photoURL = await new Promise((resolve, reject) => {
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+                
+                // Update ONLY Firestore (not Auth - base64 too long)
+                await updateDoc(doc(db, 'users', currentUser.uid), {
+                    photoURL: photoURL
+                });
+                
+                avatar.innerHTML = 
+                    `<img src="${photoURL}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
+            }
+        } catch (error) {
+            console.error('Error uploading profile image:', error);
+            alert('Failed to upload image: ' + error.message);
+            avatar.innerHTML = originalContent;
+        }
+    }
+
+    // Handle edit profile image preview
+    function handleEditProfileImagePreview(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            document.getElementById('editProfileAvatar').innerHTML = 
+                `<img src="${e.target.result}" alt="Preview" style="width: 100%; height: 100%; object-fit: cover;">`;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // Upload profile image to Firebase Storage
+    async function uploadProfileImage(file) {
+        const timestamp = Date.now();
+        const storageRef = ref(storage, `profile-images/${currentUser.uid}/${timestamp}_${file.name}`);
+        
+        await uploadBytes(storageRef, file);
+        const downloadURL = await getDownloadURL(storageRef);
+        
+        return downloadURL;
     }
 
     // Handle image preview

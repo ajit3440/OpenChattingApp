@@ -106,19 +106,31 @@ export async function FeedComponent(container) {
         const isLiked = post.likedBy?.includes(currentUser.uid) || false;
         const likeIcon = isLiked ? 'bi-heart-fill text-danger' : 'bi-heart';
         
+        const userName = post.userName || 'User';
+        const userInitials = userName.charAt(0).toUpperCase();
+        const userPhotoHTML = post.userPhotoURL ?
+            `<img src="${post.userPhotoURL}" 
+                 class="rounded-circle me-2" 
+                 width="32" 
+                 height="32" 
+                 style="cursor: pointer; object-fit: cover;"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                 data-user-id="${post.userId}"
+                 alt="${userName}">
+            <div class="rounded-circle me-2 bg-primary text-white d-none align-items-center justify-content-center" 
+                 style="cursor: pointer; width: 32px; height: 32px; font-weight: bold; min-width: 32px;"
+                 data-user-id="${post.userId}">${userInitials}</div>` :
+            `<div class="rounded-circle me-2 bg-primary text-white d-flex align-items-center justify-content-center" 
+                 style="cursor: pointer; width: 32px; height: 32px; font-weight: bold; min-width: 32px;"
+                 data-user-id="${post.userId}">${userInitials}</div>`;
+        
         postElement.innerHTML = `
             <div class="card-body">
                 <!-- Post Header -->
                 <div class="d-flex align-items-center mb-3">
-                    <img src="${post.userPhotoURL || 'https://via.placeholder.com/40'}" 
-                         class="rounded-circle me-2" 
-                         width="32" 
-                         height="32" 
-                         alt="User"
-                         style="cursor: pointer;"
-                         data-user-id="${post.userId}">
+                    ${userPhotoHTML}
                     <div>
-                        <h6 class="mb-0" style="cursor: pointer;" data-user-id="${post.userId}">${post.userName || 'User'}</h6>
+                        <h6 class="mb-0" style="cursor: pointer;" data-user-id="${post.userId}">${userName}</h6>
                         <small class="text-muted">${timestamp}</small>
                     </div>
                 </div>
@@ -146,7 +158,7 @@ export async function FeedComponent(container) {
                 <!-- Post Content -->
                 <p class="mb-1"><strong>${post.likes || 0}</strong> likes</p>
                 <p class="mb-1">
-                    <strong>${post.userName || 'User'}</strong> 
+                    <strong>${userName}</strong> 
                     ${escapeHtml(post.caption || '')}
                 </p>
                 ${post.commentsCount > 0 ? `

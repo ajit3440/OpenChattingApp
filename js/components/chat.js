@@ -229,18 +229,29 @@ export async function ChatComponent(container) {
         userItem.className = 'user-list-item p-3 border-bottom';
         userItem.dataset.userId = user.uid;
         
+        const userName = user.displayName || 'User';
+        const userInitials = userName.charAt(0).toUpperCase();
+        const photoHTML = user.photoURL ?
+            `<img src="${user.photoURL}" 
+                 class="rounded-circle" 
+                 width="40" 
+                 height="40" 
+                 style="object-fit: cover;"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                 alt="${userName}">
+            <div class="rounded-circle bg-primary text-white d-none align-items-center justify-content-center" 
+                 style="width: 40px; height: 40px; font-weight: bold; min-width: 40px;">${userInitials}</div>` :
+            `<div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
+                 style="width: 40px; height: 40px; font-weight: bold; min-width: 40px;">${userInitials}</div>`;
+        
         userItem.innerHTML = `
             <div class="d-flex align-items-center">
                 <div class="position-relative me-3">
-                    <img src="${user.photoURL || 'https://via.placeholder.com/40'}" 
-                         class="rounded-circle" 
-                         width="40" 
-                         height="40" 
-                         alt="User">
+                    ${photoHTML}
                     ${user.online ? '<span class="position-absolute bottom-0 end-0 status-indicator"></span>' : ''}
                 </div>
                 <div class="flex-grow-1">
-                    <h6 class="mb-0">${user.displayName || 'User'}</h6>
+                    <h6 class="mb-0">${userName}</h6>
                     <small class="text-muted">${user.online ? 'Online' : 'Offline'}</small>
                 </div>
             </div>
@@ -265,9 +276,31 @@ export async function ChatComponent(container) {
         document.getElementById('chatContainer').classList.add('d-flex');
         
         // Update chat header
-        document.getElementById('chatUserName').textContent = user.displayName || 'User';
+        const userName = user.displayName || 'User';
+        const userInitials = userName.charAt(0).toUpperCase();
+        document.getElementById('chatUserName').textContent = userName;
         document.getElementById('chatUserStatus').textContent = user.online ? 'Online' : 'Offline';
-        document.getElementById('chatUserAvatar').src = user.photoURL || 'https://via.placeholder.com/40';
+        
+        const chatAvatar = document.getElementById('chatUserAvatar');
+        if (user.photoURL) {
+            chatAvatar.src = user.photoURL;
+            chatAvatar.style.display = 'block';
+            chatAvatar.onerror = function() {
+                this.style.display = 'none';
+                const initialsDiv = document.createElement('div');
+                initialsDiv.className = 'rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3';
+                initialsDiv.style.cssText = 'width: 40px; height: 40px; font-weight: bold; min-width: 40px;';
+                initialsDiv.textContent = userInitials;
+                this.parentNode.insertBefore(initialsDiv, this);
+            };
+        } else {
+            chatAvatar.style.display = 'none';
+            const initialsDiv = document.createElement('div');
+            initialsDiv.className = 'rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3';
+            initialsDiv.style.cssText = 'width: 40px; height: 40px; font-weight: bold; min-width: 40px;';
+            initialsDiv.textContent = userInitials;
+            chatAvatar.parentNode.insertBefore(initialsDiv, chatAvatar);
+        }
         
         // Load messages
         await loadMessages(user.uid);
