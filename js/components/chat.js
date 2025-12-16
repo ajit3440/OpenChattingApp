@@ -1,0 +1,417 @@
+// Chat Component
+import { auth, db } from '../firebase-config.js';
+import { router } from '../router.js';
+import { 
+    collection, 
+    doc, 
+    getDoc,
+    getDocs,
+    addDoc,
+    setDoc,
+    query,
+    where,
+    orderBy,
+    onSnapshot,
+    updateDoc,
+    serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+
+let usersListener = null;
+let messagesListener = null;
+let selectedUserId = null;
+
+export async function ChatComponent(container) {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+        router.navigate('/login');
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="container-fluid p-0" style="height: calc(100vh - 140px);">
+            <div class="row g-0 h-100">
+                <!-- User List Sidebar -->
+                <div class="col-md-4 col-lg-3 border-end h-100" id="userListSidebar" style="overflow-y: auto;">
+                    <div class="p-3 border-bottom">
+                        <h5 class="mb-3">Messages</h5>
+                        <input type="text" class="form-control" id="searchUsers" placeholder="Search users...">
+                    </div>
+                    <div id="userList">
+                        <div class="text-center py-4 text-muted">
+                            <div class="spinner-border spinner-border-sm" role="status"></div>
+                            <p class="mt-2">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Area -->
+                <div class="col-md-8 col-lg-9 d-flex flex-column h-100" id="chatArea">
+                    <!-- Welcome Screen -->
+                    <div class="d-flex align-items-center justify-content-center h-100" id="welcomeScreen">
+                        <div class="text-center">
+                            <i class="bi bi-chat-heart fs-1 text-primary mb-3 d-block"></i>
+                            <h5>Welcome to Messages</h5>
+                            <p class="text-muted">Select a conversation to start messaging</p>
+                        </div>
+                    </div>
+
+                    <!-- Chat Container -->
+                    <div class="d-none flex-column h-100" id="chatContainer">
+                        <!-- Chat Header -->
+                        <div class="border-bottom p-3">
+                            <div class="d-flex align-items-center">
+                                <button class="btn btn-link d-md-none p-0 me-2" id="backToList">
+                                    <i class="bi bi-arrow-left fs-4"></i>
+                                </button>
+                                <img id="chatUserAvatar" src="" class="rounded-circle me-3" width="40" height="40" alt="User">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-0" id="chatUserName">User</h6>
+                                    <small class="text-muted" id="chatUserStatus">Offline</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Messages Area -->
+                        <div class="flex-grow-1 p-3" id="messagesArea" style="overflow-y: auto; background: #f8f9fa;">
+                            <!-- Messages will be loaded here -->
+                        </div>
+
+                        <!-- Message Input -->
+                        <div class="border-top p-3">
+                            <form id="messageForm" class="d-flex gap-2">
+                                <input type="text" class="form-control" id="messageInput" placeholder="Type a message..." autocomplete="off">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-send-fill"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            .user-list-item {
+                cursor: pointer;
+                transition: background-color 0.2s;
+            }
+            .user-list-item:hover {
+                background-color: #f8f9fa;
+            }
+            .user-list-item.active {
+                background-color: #e7f3ff;
+                border-left: 3px solid #0d6efd;
+            }
+            .message {
+                margin-bottom: 1rem;
+                display: flex;
+            }
+            .message.sent {
+                justify-content: flex-end;
+            }
+            .message.received {
+                justify-content: flex-start;
+            }
+            .message-bubble {
+                max-width: 70%;
+                padding: 0.75rem 1rem;
+                border-radius: 1rem;
+                word-wrap: break-word;
+            }
+            .message.sent .message-bubble {
+                background-color: #0d6efd;
+                color: white;
+                border-bottom-right-radius: 0.25rem;
+            }
+            .message.received .message-bubble {
+                background-color: white;
+                border: 1px solid #dee2e6;
+                border-bottom-left-radius: 0.25rem;
+            }
+            .message-time {
+                font-size: 0.7rem;
+                opacity: 0.7;
+                display: block;
+                margin-top: 0.25rem;
+            }
+            .status-indicator {
+                width: 10px;
+                height: 10px;
+                background-color: #44b700;
+                border-radius: 50%;
+                display: inline-block;
+                margin-left: 5px;
+            }
+            @media (max-width: 767px) {
+                #userListSidebar {
+                    display: block !important;
+                }
+                #chatArea.show-chat #userListSidebar {
+                    display: none !important;
+                }
+                #chatArea.show-chat #chatContainer {
+                    display: flex !important;
+                }
+            }
+        </style>
+    `;
+
+    // Initialize
+    await updateUserStatus(true);
+    await loadUsers();
+
+    // Event listeners
+    document.getElementById('searchUsers').addEventListener('input', handleSearch);
+    document.getElementById('messageForm').addEventListener('submit', sendMessage);
+    document.getElementById('backToList')?.addEventListener('click', showUserList);
+
+    // Update status on page unload
+    window.addEventListener('beforeunload', () => updateUserStatus(false));
+
+    async function updateUserStatus(online) {
+        try {
+            await updateDoc(doc(db, 'users', currentUser.uid), {
+                online: online,
+                lastSeen: serverTimestamp()
+            });
+        } catch (error) {
+            console.error('Error updating status:', error);
+        }
+    }
+
+    async function loadUsers() {
+        const usersQuery = query(
+            collection(db, 'users'),
+            where('uid', '!=', currentUser.uid)
+        );
+        
+        usersListener = onSnapshot(usersQuery, async (snapshot) => {
+            const userListElement = document.getElementById('userList');
+            
+            if (snapshot.empty) {
+                userListElement.innerHTML = `
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-person-x fs-1 d-block mb-3"></i>
+                        <p>No users found</p>
+                        <small>Search for users to start chatting</small>
+                    </div>
+                `;
+                return;
+            }
+            
+            userListElement.innerHTML = '';
+            
+            // Get current user data
+            const currentUserDoc = await getDoc(doc(db, 'users', currentUser.uid));
+            const currentUserData = currentUserDoc.data();
+            const following = currentUserData?.following || [];
+            
+            snapshot.forEach((doc) => {
+                const user = doc.data();
+                // Show users we're following
+                if (following.includes(user.uid)) {
+                    renderUserItem(user);
+                }
+            });
+            
+            // If no following, show all users
+            if (following.length === 0) {
+                snapshot.forEach((doc) => {
+                    renderUserItem(doc.data());
+                });
+            }
+        });
+    }
+
+    function renderUserItem(user) {
+        const userListElement = document.getElementById('userList');
+        const userItem = document.createElement('div');
+        userItem.className = 'user-list-item p-3 border-bottom';
+        userItem.dataset.userId = user.uid;
+        
+        userItem.innerHTML = `
+            <div class="d-flex align-items-center">
+                <div class="position-relative me-3">
+                    <img src="${user.photoURL || 'https://via.placeholder.com/40'}" 
+                         class="rounded-circle" 
+                         width="40" 
+                         height="40" 
+                         alt="User">
+                    ${user.online ? '<span class="position-absolute bottom-0 end-0 status-indicator"></span>' : ''}
+                </div>
+                <div class="flex-grow-1">
+                    <h6 class="mb-0">${user.displayName || 'User'}</h6>
+                    <small class="text-muted">${user.online ? 'Online' : 'Offline'}</small>
+                </div>
+            </div>
+        `;
+        
+        userItem.addEventListener('click', () => selectUser(user));
+        userListElement.appendChild(userItem);
+    }
+
+    async function selectUser(user) {
+        selectedUserId = user.uid;
+        
+        // Update UI
+        document.querySelectorAll('.user-list-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        document.querySelector(`[data-user-id="${user.uid}"]`)?.classList.add('active');
+        
+        // Show chat container
+        document.getElementById('welcomeScreen').classList.add('d-none');
+        document.getElementById('chatContainer').classList.remove('d-none');
+        document.getElementById('chatContainer').classList.add('d-flex');
+        
+        // Update chat header
+        document.getElementById('chatUserName').textContent = user.displayName || 'User';
+        document.getElementById('chatUserStatus').textContent = user.online ? 'Online' : 'Offline';
+        document.getElementById('chatUserAvatar').src = user.photoURL || 'https://via.placeholder.com/40';
+        
+        // Load messages
+        await loadMessages(user.uid);
+        
+        // Show chat on mobile
+        document.getElementById('chatArea').classList.add('show-chat');
+    }
+
+    async function loadMessages(otherUserId) {
+        // Unsubscribe from previous listener
+        if (messagesListener) {
+            messagesListener();
+        }
+        
+        // Create chat ID (alphabetically sorted)
+        const chatId = [currentUser.uid, otherUserId].sort().join('_');
+        
+        // Listen for messages
+        const messagesQuery = query(
+            collection(db, 'chats', chatId, 'messages'),
+            orderBy('timestamp', 'asc')
+        );
+        
+        messagesListener = onSnapshot(messagesQuery, (snapshot) => {
+            const messagesArea = document.getElementById('messagesArea');
+            messagesArea.innerHTML = '';
+            
+            if (snapshot.empty) {
+                messagesArea.innerHTML = `
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-chat-dots fs-3 d-block mb-2"></i>
+                        <p>No messages yet. Say hi! 👋</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            snapshot.forEach((doc) => {
+                const message = doc.data();
+                renderMessage(message);
+            });
+            
+            // Scroll to bottom
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+        });
+    }
+
+    function renderMessage(message) {
+        const messagesArea = document.getElementById('messagesArea');
+        const messageDiv = document.createElement('div');
+        
+        const isOwnMessage = message.senderId === currentUser.uid;
+        messageDiv.className = `message ${isOwnMessage ? 'sent' : 'received'}`;
+        
+        const timestamp = message.timestamp ? 
+            formatTimestamp(message.timestamp.toDate()) : 
+            'Just now';
+        
+        messageDiv.innerHTML = `
+            <div class="message-bubble">
+                <div>${escapeHtml(message.text)}</div>
+                <small class="message-time">${timestamp}</small>
+            </div>
+        `;
+        
+        messagesArea.appendChild(messageDiv);
+    }
+
+    async function sendMessage(e) {
+        e.preventDefault();
+        
+        const messageInput = document.getElementById('messageInput');
+        const messageText = messageInput.value.trim();
+        
+        if (!messageText || !selectedUserId) return;
+        
+        const chatId = [currentUser.uid, selectedUserId].sort().join('_');
+        
+        try {
+            const messageData = {
+                text: messageText,
+                senderId: currentUser.uid,
+                receiverId: selectedUserId,
+                timestamp: serverTimestamp(),
+                read: false
+            };
+            
+            await addDoc(collection(db, 'chats', chatId, 'messages'), messageData);
+            
+            // Update chat metadata
+            await setDoc(doc(db, 'chats', chatId), {
+                participants: [currentUser.uid, selectedUserId],
+                lastMessage: messageText,
+                lastMessageTime: serverTimestamp(),
+                lastMessageBy: currentUser.uid
+            }, { merge: true });
+            
+            messageInput.value = '';
+        } catch (error) {
+            console.error('Error sending message:', error);
+            alert('Failed to send message');
+        }
+    }
+
+    function handleSearch(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const userItems = document.querySelectorAll('.user-list-item');
+        
+        userItems.forEach(item => {
+            const userName = item.querySelector('h6').textContent.toLowerCase();
+            item.style.display = userName.includes(searchTerm) ? 'block' : 'none';
+        });
+    }
+
+    function showUserList() {
+        document.getElementById('chatArea').classList.remove('show-chat');
+        document.getElementById('welcomeScreen').classList.remove('d-none');
+        document.getElementById('chatContainer').classList.add('d-none');
+    }
+
+    function formatTimestamp(date) {
+        const now = new Date();
+        const diff = now - date;
+        const minutes = Math.floor(diff / 60000);
+        const hours = Math.floor(diff / 3600000);
+        const days = Math.floor(diff / 86400000);
+        
+        if (minutes < 1) return 'Just now';
+        if (minutes < 60) return `${minutes}m ago`;
+        if (hours < 24) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        if (days < 7) return `${days}d ago`;
+        return date.toLocaleDateString();
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Cleanup function
+    return () => {
+        if (usersListener) usersListener();
+        if (messagesListener) messagesListener();
+        updateUserStatus(false);
+    };
+}
