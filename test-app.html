@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>App Test</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        #app-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1020;
+            background: white;
+        }
+        #app-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1020;
+            background: white;
+        }
+        #app {
+            padding-top: 56px;
+            padding-bottom: 70px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="app-header">
+            <nav class="navbar navbar-light bg-white border-bottom">
+                <div class="container-fluid">
+                    <a class="navbar-brand fw-bold">ChatApp</a>
+                </div>
+            </nav>
+        </div>
+        
+        <div id="app-content">
+            <div class="container py-3" style="max-width: 600px;">
+                <div class="card mb-3">
+                    <div class="card-body">Post 1</div>
+                </div>
+                <div class="card mb-3">
+                    <div class="card-body">Post 2</div>
+                </div>
+                <div class="card mb-3">
+                    <div class="card-body">Post 3</div>
+                </div>
+                <div class="card mb-3">
+                    <div class="card-body">Post 4</div>
+                </div>
+                <div class="card mb-3">
+                    <div class="card-body">Post 5</div>
+                </div>
+                <div class="card mb-3">
+                    <div class="card-body">Post 6</div>
+                </div>
+                <div class="card mb-3">
+                    <div class="card-body">Post 7</div>
+                </div>
+                <div class="card mb-3">
+                    <div class="card-body">Post 8</div>
+                </div>
+                <div class="card mb-3">
+                    <div class="card-body">Post 9</div>
+                </div>
+                <div class="card mb-3">
+                    <div class="card-body">Post 10</div>
+                </div>
+                <p>If this scrolls, Bootstrap is OK</p>
+            </div>
+        </div>
+        
+        <div id="app-footer">
+            <nav class="navbar navbar-light bg-white border-top">
+                <div class="container-fluid">
+                    <div class="d-flex justify-content-around w-100">
+                        <a href="#" class="nav-link">Home</a>
+                        <a href="#" class="nav-link">Search</a>
+                        <a href="#" class="nav-link">Chat</a>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </div>
+</body>
+</html>
