@@ -44,9 +44,6 @@ export function renderFooter() {
                 color: #0d6efd !important;
                 font-weight: 600;
             }
-            body {
-                padding-bottom: 70px;
-            }
         </style>
     `;
 }

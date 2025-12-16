@@ -28,16 +28,49 @@ body {
 html, body {
     height: 100%;
     overflow-x: hidden;
-    overflow-y: auto;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch; /* Enable smooth scrolling on iOS */
     position: relative;
     width: 100%;
+    padding-top: 56px; /* Header height */
+    padding-bottom: 70px; /* Footer height */
+}
+
+#app {
+    min-height: 100vh;
+}
+
+#app-content {
+    width: 100%;
+    min-height: calc(100vh - 126px); /* viewport - header - footer */
+}
+
+#app-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1020;
+}
+
+#app-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1020;
 }
 
 /* Fix for chat page only */
 html.chat-page,
 body.chat-page {
-    overflow: hidden;
-    position: fixed;
+    overflow: hidden !important;
+    position: fixed !important;
+    height: 100vh;
+}
+
+body.chat-page #app-content {
+    overflow: hidden !important;
 }
 
 /* Authentication Page */
