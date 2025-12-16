@@ -14,10 +14,15 @@ yarn-error.log*
 # IDE and Editor files
 .vscode/
 .idea/
+.vs/
 *.swp
 *.swo
 *~
 .DS_Store
+
+# Chrome Debug
+.chrome-debug/
+chrome-debug.log
 
 # OS files
 Thumbs.db
