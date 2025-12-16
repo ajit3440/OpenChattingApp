@@ -26,7 +26,7 @@ export async function NotificationsComponent(container) {
     }
 
     container.innerHTML = `
-        <div class="container py-3" style="max-width: 600px;">
+        <div class="container py-3" style="max-width: 600px; padding-bottom: 100px;">
             <h4 class="mb-4">Notifications</h4>
             
             <!-- Follow Requests -->

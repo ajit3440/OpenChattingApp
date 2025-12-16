@@ -27,19 +27,17 @@ body {
 
 html, body {
     height: 100%;
-    overflow: hidden;
-    position: fixed;
+    overflow-x: hidden;
+    overflow-y: auto;
+    position: relative;
     width: 100%;
 }
 
-/* Allow scrolling for profile and feed pages */
-html.feed-page,
-html.profile-page,
-body.profile-page,
-body.feed-page {
-    position: relative !important;
-    overflow: auto !important;
-    height: auto !important;
+/* Fix for chat page only */
+html.chat-page,
+body.chat-page {
+    overflow: hidden;
+    position: fixed;
 }
 
 /* Authentication Page */

@@ -27,7 +27,7 @@ export async function FeedComponent(container) {
     }
 
     container.innerHTML = `
-        <div class="container py-3" style="max-width: 600px;">
+        <div class="container py-3" style="max-width: 600px; padding-bottom: 100px;">
             <div id="feedContainer"></div>
         </div>
 

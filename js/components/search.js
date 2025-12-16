@@ -26,7 +26,7 @@ export async function SearchComponent(container) {
     }
 
     container.innerHTML = `
-        <div class="container py-3" style="max-width: 600px;">
+        <div class="container py-3" style="max-width: 600px; padding-bottom: 100px;">
             <!-- Search Bar -->
             <div class="position-relative mb-4">
                 <input type="text" class="form-control" id="searchInput" placeholder="Search users...">

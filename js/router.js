@@ -30,6 +30,15 @@ class Router {
             this.cleanup = null;
         }
 
+        // Update body class for chat page (prevents scrolling on chat)
+        if (path === '/chat') {
+            document.documentElement.classList.add('chat-page');
+            document.body.classList.add('chat-page');
+        } else {
+            document.documentElement.classList.remove('chat-page');
+            document.body.classList.remove('chat-page');
+        }
+
         // Find matching route
         let route = this.routes[path];
         

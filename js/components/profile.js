@@ -30,7 +30,7 @@ export async function ProfileComponent(container) {
     }
 
     container.innerHTML = `
-        <div class="container py-4" style="max-width: 600px;">
+        <div class="container py-4" style="max-width: 600px; padding-bottom: 100px;">
             <!-- Profile Header -->
             <div class="profile-header text-center mb-4">
                 <div class="mb-3" id="profileAvatar" style="width: 100px; height: 100px; margin: 0 auto; border-radius: 50%; overflow: hidden; background: #f0f0f0; display: flex; align-items: center; justify-content: center;">
