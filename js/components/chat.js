@@ -108,15 +108,6 @@ export async function ChatComponent(container) {
 
                         <!-- Message Input -->
                         <div class="border-top p-3" style="flex-shrink: 0;">
-                            <div class="d-flex align-items-center gap-2 mb-2" id="gifPreviewRow" style="display: none;">
-                                <span class="badge text-bg-light border" style="max-width: 100%;">
-                                    <i class="bi bi-filetype-gif me-1"></i>
-                                    <span class="text-truncate d-inline-block" style="max-width: 220px; vertical-align: bottom;" id="gifPreviewText"></span>
-                                    <button type="button" class="btn btn-sm btn-link p-0 ms-2" id="removeGifBtn" aria-label="Remove GIF">
-                                        <i class="bi bi-x-lg"></i>
-                                    </button>
-                                </span>
-                            </div>
                             <form id="messageForm" class="d-flex gap-2">
                                 <button type="button" class="btn btn-outline-secondary" id="newGroupBtnComposer" aria-label="New group">
                                     <i class="bi bi-people"></i>
@@ -127,7 +118,15 @@ export async function ChatComponent(container) {
                                 <button type="button" class="btn btn-outline-secondary" id="gifBtn" aria-label="GIF">
                                     GIF
                                 </button>
-                                <input type="text" class="form-control" id="messageInput" placeholder="Type a message..." autocomplete="off">
+                                <div class="message-input-wrap flex-grow-1" style="min-width: 0;" id="messageInputWrap">
+                                    <div class="gif-preview-inbox" id="gifPreviewInBox" style="display: none;">
+                                        <img id="gifInputThumb" alt="Selected GIF" />
+                                        <button type="button" class="btn btn-sm btn-light p-0 gif-remove" id="removeGifBtn" aria-label="Remove GIF">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                    </div>
+                                    <input type="text" class="message-text-input" id="messageInput" placeholder="Type a message..." autocomplete="off">
+                                </div>
                                 <button type="submit" class="btn btn-primary">
                                     <i class="bi bi-send-fill"></i>
                                 </button>
@@ -185,6 +184,10 @@ export async function ChatComponent(container) {
             .message {
                 margin-bottom: 1rem;
                 display: flex;
+            }
+
+            #messageForm {
+                align-items: flex-end;
             }
             .message.sent {
                 justify-content: flex-end;
@@ -269,19 +272,75 @@ export async function ChatComponent(container) {
                 gap: 6px;
                 max-height: 260px;
                 overflow: auto;
+                align-items: start;
             }
             .gif-tile {
                 border-radius: 0.5rem;
                 overflow: hidden;
                 cursor: pointer;
                 background: var(--bs-tertiary-bg, #f8f9fa);
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
             .gif-tile img {
                 width: 100%;
-                height: 100%;
+                height: auto;
                 display: block;
+                object-fit: contain;
+            }
+
+            .message-input-wrap {
+                display: flex;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+                padding: 10px;
+                border: 1px solid var(--bs-border-color);
+                border-radius: var(--bs-border-radius);
+                background: var(--bs-body-bg);
+                min-height: 44px;
+                max-width: 100%;
+            }
+            .message-input-wrap:focus-within {
+                border-color: var(--bs-primary);
+                box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.15);
+            }
+            .message-text-input {
+                border: none;
+                outline: none;
+                background: transparent;
+                width: 100%;
+                min-width: 0;
+                padding: 0;
+            }
+
+            .gif-preview-inbox {
+                position: relative;
+                width: 100%;
+                max-width: 100%;
+            }
+            .gif-preview-inbox img {
+                display: block;
+                width: 100%;
+                max-width: 260px;
+                max-height: 170px;
+                border-radius: 0.75rem;
+                border: 1px solid var(--bs-border-color);
+                background: var(--bs-tertiary-bg, #f8f9fa);
                 object-fit: cover;
-                aspect-ratio: 1 / 1;
+            }
+            .gif-preview-inbox .gif-remove {
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                width: 30px;
+                height: 30px;
+                border-radius: 999px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 0 0 1px rgba(0,0,0,0.06);
             }
             @media (max-width: 767px) {
                 /* On mobile, show either the list OR the chat (not stacked). */
@@ -435,7 +494,8 @@ export async function ChatComponent(container) {
                 const userRow = document.querySelector(`.user-list-item[data-user-id="${otherId}"]`);
                 const unread = isChatUnread(data, currentUser.uid);
 
-                const last = (data.lastMessage || '').trim();
+                let last = (data.lastMessage || '').trim();
+                if (last.toLowerCase() === 'gif') last = '';
                 const lastMs = data.lastMessageTime?.toMillis?.() || 0;
                 const existing = dmMetaByUserId.get(otherId);
                 if (!existing || lastMs > (existing.lastMs || 0)) {
@@ -447,9 +507,7 @@ export async function ChatComponent(container) {
                 if (dot) dot.classList.toggle('d-none', !unread);
 
                 const subtitleEl = userRow.querySelector('.dm-subtitle');
-                if (subtitleEl) {
-                    subtitleEl.textContent = last ? last : (subtitleEl.dataset.fallback || subtitleEl.textContent);
-                }
+                if (subtitleEl) subtitleEl.textContent = last ? last : (subtitleEl.dataset.fallback || subtitleEl.textContent);
             });
 
             groups.sort((a, b) => {
@@ -482,7 +540,8 @@ export async function ChatComponent(container) {
 
         const name = group.name || 'Group';
         const membersCount = Array.isArray(group.participants) ? group.participants.length : 0;
-        const subtitle = group.lastMessage ? group.lastMessage : `${membersCount} members`;
+        const last = (group.lastMessage || '').trim();
+        const subtitle = last && last.toLowerCase() !== 'gif' ? last : `${membersCount} members`;
         const unread = !!group.__unread;
 
         el.innerHTML = `
@@ -809,14 +868,14 @@ export async function ChatComponent(container) {
                 await setDoc(doc(db, 'chats', chatId), {
                     type: 'dm',
                     participants: [currentUser.uid, selectedUserId],
-                    lastMessage: messageText || (pendingGifUrl ? 'GIF' : ''),
+                    lastMessage: messageText || '',
                     lastMessageTime: serverTimestamp(),
                     lastMessageBy: currentUser.uid
                 }, { merge: true });
             } else {
                 await setDoc(doc(db, 'chats', chatId), {
                     type: 'group',
-                    lastMessage: messageText || (pendingGifUrl ? 'GIF' : ''),
+                    lastMessage: messageText || '',
                     lastMessageTime: serverTimestamp(),
                     lastMessageBy: currentUser.uid
                 }, { merge: true });
@@ -983,16 +1042,20 @@ export async function ChatComponent(container) {
     }
 
     function updateGifPreview() {
-        const row = document.getElementById('gifPreviewRow');
-        const text = document.getElementById('gifPreviewText');
-        if (!row || !text) return;
-        if (!pendingGifUrl) {
-            row.style.display = 'none';
-            text.textContent = '';
-            return;
+        const preview = document.getElementById('gifPreviewInBox');
+        const thumb = document.getElementById('gifInputThumb');
+        const safe = sanitizeHttpUrl(pendingGifUrl);
+
+        if (preview) preview.style.display = safe ? 'block' : 'none';
+        if (thumb) {
+            if (safe) {
+                thumb.src = safe;
+                thumb.referrerPolicy = 'no-referrer';
+                thumb.loading = 'lazy';
+            } else {
+                thumb.removeAttribute('src');
+            }
         }
-        row.style.display = 'flex';
-        text.textContent = pendingGifUrl;
     }
 
     function clearPendingGif() {
