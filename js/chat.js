@@ -61,6 +61,13 @@ async function initializeChat() {
     
     document.getElementById('currentUserName').textContent = userData.displayName || 'User';
     
+    // Set welcome screen user info (for mobile)
+    document.getElementById('welcomeUserName').textContent = userData.displayName || 'User';
+    if (userData.photoURL) {
+        document.getElementById('welcomeUserAvatar').innerHTML = 
+            `<img src="${userData.photoURL}" alt="Avatar">`;
+    }
+    
     // Set user online status
     await updateUserStatus(true);
     
@@ -177,8 +184,8 @@ function selectUser(user) {
     // Load messages
     loadMessages(user.uid);
     
-    // Hide sidebar on mobile
-    hideScrollOnMobile();
+    // Show chat on mobile
+    showChatOnMobile();
 }
 
 // Load messages between current user and selected user
@@ -440,8 +447,8 @@ function selectGroup(group) {
     // Load group messages
     loadGroupMessages(group.id);
     
-    // Hide sidebar on mobile
-    hideScrollOnMobile();
+    // Show chat on mobile
+    showChatOnMobile();
 }
 
 // Load group messages
@@ -594,23 +601,17 @@ document.getElementById('mobileBackBtn')?.addEventListener('click', () => {
     document.getElementById('chatContainer').classList.add('d-none');
     document.getElementById('welcomeScreen').classList.add('d-none');
     
-    // Show sidebar on mobile
-    const sidebar = document.querySelector('.chat-sidebar');
-    if (window.innerWidth <= 768) {
-        sidebar.classList.add('show');
-        setTimeout(() => {
-            sidebar.classList.remove('show');
-        }, 300);
-        
-        // Reset selections
-        selectedUserId = null;
-        selectedGroupId = null;
-        isGroupChat = false;
-        
-        document.querySelectorAll('.user-item').forEach(item => {
-            item.classList.remove('active');
-        });
-    }
+    // Hide chat and show sidebar on mobile
+    hideChatOnMobile();
+    
+    // Reset selections
+    selectedUserId = null;
+    selectedGroupId = null;
+    isGroupChat = false;
+    
+    document.querySelectorAll('.user-item').forEach(item => {
+        item.classList.remove('active');
+    });
 });
 
 // Mobile menu button - show options (future feature: group info, etc)
@@ -621,9 +622,18 @@ document.getElementById('mobileMenuBtn')?.addEventListener('click', () => {
     alert('Menu options coming soon!');
 });
 
-// When selecting user/group on mobile, hide sidebar
-function hideScrollOnMobile() {
+// Show chat on mobile
+function showChatOnMobile() {
     if (window.innerWidth <= 768) {
-        document.querySelector('.chat-sidebar')?.classList.remove('show');
+        document.querySelector('.chat-sidebar')?.classList.add('chat-active');
+        document.querySelector('.chat-main')?.classList.add('chat-active');
+    }
+}
+
+// Hide chat and show sidebar on mobile
+function hideChatOnMobile() {
+    if (window.innerWidth <= 768) {
+        document.querySelector('.chat-sidebar')?.classList.remove('chat-active');
+        document.querySelector('.chat-main')?.classList.remove('chat-active');
     }
 }
