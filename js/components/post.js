@@ -24,7 +24,7 @@ export async function PostComponent(container, params) {
     const postId = params?.postId;
 
     container.innerHTML = `
-        <div class="container py-3" style="max-width: 600px; padding-bottom: 100px;">
+        <div class="container py-3 app-container">
             <div class="d-flex align-items-center gap-2 mb-3">
                 <button class="btn btn-link p-0" id="backBtn" aria-label="Back">
                     <i class="bi bi-arrow-left fs-4"></i>
@@ -118,7 +118,7 @@ export async function PostComponent(container, params) {
 
 function renderPostCard(parent, post, currentUser) {
     const postElement = document.createElement('div');
-    postElement.className = 'card mb-3';
+    postElement.className = 'card mb-3 post-card shadow-sm';
 
     const timestamp = post.createdAt ? formatTimestamp(post.createdAt.toDate()) : 'Just now';
     const isLiked = post.likedBy?.includes(currentUser.uid) || false;
@@ -159,8 +159,8 @@ function renderPostCard(parent, post, currentUser) {
             </div>
             ` : ''}
 
-            <div class="mb-2">
-                <button class="btn btn-link text-dark p-0 me-3 like-btn" data-post-id="${post.id}">
+            <div class="mb-2 post-actions">
+                <button class="btn btn-link text-body p-0 me-3 like-btn" data-post-id="${post.id}">
                     <i class="bi ${likeIcon} fs-4"></i>
                 </button>
             </div>

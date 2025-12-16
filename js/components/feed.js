@@ -27,7 +27,7 @@ export async function FeedComponent(container) {
     }
 
     container.innerHTML = `
-        <div class="container py-3" style="max-width: 600px; padding-bottom: 100px;">
+        <div class="container py-3 app-container">
             <div id="feedContainer"></div>
         </div>
 
@@ -96,7 +96,7 @@ export async function FeedComponent(container) {
     function renderPost(post) {
         const feedContainer = document.getElementById('feedContainer');
         const postElement = document.createElement('div');
-        postElement.className = 'card mb-3';
+        postElement.className = 'card mb-3 post-card shadow-sm';
         postElement.id = `post-${post.id}`;
         
         const timestamp = post.createdAt ? 
@@ -143,14 +143,14 @@ export async function FeedComponent(container) {
                 ` : ''}
                 
                 <!-- Post Actions -->
-                <div class="mb-2">
-                    <button class="btn btn-link text-dark p-0 me-3 like-btn" data-post-id="${post.id}">
+                <div class="mb-2 post-actions">
+                    <button class="btn btn-link text-body p-0 me-3 like-btn" data-post-id="${post.id}">
                         <i class="bi ${likeIcon} fs-4"></i>
                     </button>
-                    <button class="btn btn-link text-dark p-0 me-3 comment-btn" data-post-id="${post.id}">
+                    <button class="btn btn-link text-body p-0 me-3 comment-btn" data-post-id="${post.id}">
                         <i class="bi bi-chat fs-4"></i>
                     </button>
-                    <button class="btn btn-link text-dark p-0 share-btn" data-post-id="${post.id}">
+                    <button class="btn btn-link text-body p-0 share-btn" data-post-id="${post.id}">
                         <i class="bi bi-send fs-4"></i>
                     </button>
                 </div>

@@ -38,12 +38,5 @@ export function renderFooter() {
                 </div>
             </div>
         </nav>
-        
-        <style>
-            .nav-link.active {
-                color: #0d6efd !important;
-                font-weight: 600;
-            }
-        </style>
     `;
 }

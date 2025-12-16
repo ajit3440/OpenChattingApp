@@ -10,7 +10,7 @@ html {
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: #fff;
+    background-color: var(--bg-light);
     color: var(--secondary-color);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -68,6 +68,189 @@ body.chat-page #app {
     --online-color: #44b700;
     --message-sent: #0095f6;
     --message-received: #efefef;
+
+    /* UI primitives (no new colors/shadows; just consistent spacing/radius) */
+    --radius-sm: 10px;
+    --radius-md: 14px;
+    --radius-lg: 18px;
+}
+
+/* ========== HIGH STANDARD UI POLISH ========== */
+
+/* App surface */
+#app-content {
+    min-height: calc(100vh - 126px);
+}
+
+/* Consistent page width + bottom space above nav */
+.app-container {
+    max-width: 680px;
+    padding-bottom: 100px;
+}
+
+/* Consistent cards */
+.card {
+    border-color: var(--border-color);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background-color: #fff;
+}
+
+/* Feed/Post cards */
+.post-card {
+    border-color: var(--border-color);
+}
+
+.post-card .card-body {
+    padding: 1rem 1.25rem;
+}
+
+.post-card img.w-100.rounded {
+    border-radius: var(--radius-sm) !important;
+}
+
+.post-actions .btn {
+    line-height: 1;
+}
+
+/* Profile avatars (size helpers) */
+.profile-avatar {
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--bs-tertiary-bg, #f0f0f0);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-avatar--lg {
+    width: 100px;
+    height: 100px;
+}
+
+.profile-avatar--md {
+    width: 80px;
+    height: 80px;
+}
+
+.profile-avatar__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.profile-camera-btn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    bottom: 0;
+    right: 0;
+    z-index: 10;
+}
+
+.profile-initials {
+    width: 100%;
+    height: 100%;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.profile-initials--lg {
+    font-size: 40px;
+}
+
+.profile-initials--md {
+    font-size: 32px;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* Posts grid (Profile/User Profile) */
+.posts-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+}
+
+.posts-grid__empty {
+    grid-column: 1 / -1;
+}
+
+.post-thumb {
+    position: relative;
+    padding-bottom: 100%;
+    overflow: hidden;
+    cursor: pointer;
+    background: var(--bs-tertiary-bg, #f0f0f0);
+}
+
+.post-thumb__img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.post-thumb__overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.55);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.post-thumb:hover .post-thumb__overlay {
+    opacity: 1;
+}
+
+/* Inputs */
+.form-control,
+.input-group .form-control {
+    border-radius: var(--radius-sm);
+    border-color: var(--border-color);
+}
+
+.form-control:focus,
+.input-group .form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: none;
+}
+
+/* Buttons */
+.btn {
+    border-radius: var(--radius-sm);
+}
+
+/* Header avatar (supports base64 background-image) */
+#header-avatar {
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
+    border: 1px solid var(--border-color);
+}
+
+/* Bottom nav - unify active color with theme */
+#app-footer .nav-link {
+    color: var(--text-muted);
+}
+
+#app-footer .nav-link.active {
+    color: var(--primary-color) !important;
+    font-weight: 600;
+}
+
+#app-footer .nav-link.active i {
+    color: var(--primary-color) !important;
 }
 
 /* Authentication Page */
@@ -101,7 +284,8 @@ body.chat-page #app {
 }
 
 .btn-primary:hover {
-    background-color: #0081d6;
+    background-color: var(--primary-color);
+    filter: brightness(0.96);
 }
 
 .btn-primary:disabled {
@@ -242,7 +426,7 @@ body.chat-page #app {
     overflow-y: auto;
     overflow-x: hidden;
     padding: 20px;
-    background: linear-gradient(180deg, #fafafa 0%, #fff 100%);
+    background: linear-gradient(180deg, var(--bg-light) 0%, #fff 100%);
     background-image: 
         repeating-linear-gradient(
             45deg,

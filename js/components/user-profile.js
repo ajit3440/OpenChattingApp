@@ -35,9 +35,9 @@ export async function UserProfileComponent(container, params) {
     }
 
     container.innerHTML = `
-        <div class="container py-4" style="max-width: 600px; padding-bottom: 100px;">
+        <div class="container py-4 app-container">
             <div class=\"profile-header text-center mb-4\">
-                <div class=\"mb-3\" id=\"profileAvatar\" style=\"width: 100px; height: 100px; margin: 0 auto; border-radius: 50%; overflow: hidden; background: #f0f0f0; display: flex; align-items: center; justify-content: center;\">
+                <div class=\"mb-3 profile-avatar profile-avatar--lg mx-auto\" id=\"profileAvatar\">
                     <i class=\"bi bi-person-circle\" style=\"font-size: 100px;\"></i>
                 </div>
                 <div class=\"d-flex align-items-center justify-content-center gap-2 mb-2\">
@@ -74,8 +74,8 @@ export async function UserProfileComponent(container, params) {
                 </div>
             </div>
 
-            <div id=\"postsGrid\" style=\"display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px;\">
-                <div class=\"text-center py-5 text-muted\" style=\"grid-column: 1 / -1;\">
+            <div id=\"postsGrid\" class=\"posts-grid\">
+                <div class=\"text-center py-5 text-muted posts-grid__empty\">
                     <i class=\"bi bi-camera fs-1 d-block mb-3\"></i>
                     <p>Loading...</p>
                 </div>

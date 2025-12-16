@@ -31,62 +31,73 @@ export async function ProfileComponent(container) {
     }
 
     container.innerHTML = `
-        <div class="container py-4" style="max-width: 600px; padding-bottom: 100px;">
+        <div class="container py-4 app-container">
             <!-- Profile Header -->
-            <div class="profile-header text-center mb-4">
-                <div class="position-relative d-inline-block mb-3">
-                    <div id="profileAvatar" style="width: 100px; height: 100px; border-radius: 50%; overflow: hidden; background: #f0f0f0; display: flex; align-items: center; justify-content: center;">
-                        <i class="bi bi-person-circle" style="font-size: 100px;"></i>
-                    </div>
-                    <button class="btn btn-primary btn-sm rounded-circle position-absolute" 
-                            id="cameraBtn"
-                            style="width: 40px; height: 40px; padding: 0; bottom: 0; right: 0; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                        <i class="bi bi-camera-fill"></i>
-                    </button>
-                    <input type="file" id="profileImageInput" accept="image/*" style="display: none;">
-                </div>
-                <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
-                    <h3 class="mb-0" id="profileName">Loading...</h3>
-                    <span class="badge bg-secondary" id="accountTypeBadge" style="display: none;">
-                        <i class="bi bi-lock-fill"></i> Private
-                    </span>
-                </div>
-                <p class="text-muted" id="profileEmail"></p>
-                <p id="profileBio">No bio yet</p>
-                
-                <!-- Stats -->
-                <div class="row text-center my-4">
-                    <div class="col-4">
-                        <h5 id="postsCount">0</h5>
-                        <small class="text-muted">Posts</small>
-                    </div>
-                    <div class="col-4" role="button" data-bs-toggle="modal" data-bs-target="#followersModal" style="cursor: pointer;">
-                        <h5 id="followersCount">0</h5>
-                        <small class="text-muted">Followers</small>
-                    </div>
-                    <div class="col-4" role="button" data-bs-toggle="modal" data-bs-target="#followingModal" style="cursor: pointer;">
-                        <h5 id="followingCount">0</h5>
-                        <small class="text-muted">Following</small>
-                    </div>
-                </div>
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="position-relative flex-shrink-0">
+                            <div id="profileAvatar" class="profile-avatar profile-avatar--lg">
+                                <i class="bi bi-person-circle" style="font-size: 100px;"></i>
+                            </div>
+                            <button class="btn btn-primary btn-sm rounded-circle position-absolute shadow-sm profile-camera-btn"
+                                    id="cameraBtn"
+                                    type="button"
+                                    aria-label="Change profile photo">
+                                <i class="bi bi-camera-fill"></i>
+                            </button>
+                            <input type="file" id="profileImageInput" accept="image/*" style="display: none;">
+                        </div>
 
-                <!-- Action Buttons -->
-                <div class="d-grid gap-2 mb-4">
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editProfileModal">
-                        <i class="bi bi-pencil me-2"></i>Edit Profile
-                    </button>
-                    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#createPostModal">
-                        <i class="bi bi-plus-square me-2"></i>Create Post
-                    </button>
-                    <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#settingsModal">
-                        <i class="bi bi-gear me-2"></i>Settings
-                    </button>
+                        <div class="flex-grow-1" style="min-width: 0;">
+                            <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                                <div class="d-flex align-items-center gap-2" style="min-width: 0;">
+                                    <h3 class="mb-0 text-truncate" id="profileName">Loading...</h3>
+                                    <span class="badge bg-secondary" id="accountTypeBadge" style="display: none;">
+                                        <i class="bi bi-lock-fill"></i> Private
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between text-center mt-3">
+                                <div class="flex-fill">
+                                    <div class="fw-semibold" id="postsCount">0</div>
+                                    <div class="text-muted small">Posts</div>
+                                </div>
+                                <div class="flex-fill cursor-pointer" role="button" data-bs-toggle="modal" data-bs-target="#followersModal">
+                                    <div class="fw-semibold" id="followersCount">0</div>
+                                    <div class="text-muted small">Followers</div>
+                                </div>
+                                <div class="flex-fill cursor-pointer" role="button" data-bs-toggle="modal" data-bs-target="#followingModal">
+                                    <div class="fw-semibold" id="followingCount">0</div>
+                                    <div class="text-muted small">Following</div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex flex-wrap gap-2 mt-3">
+                                <button class="btn btn-primary rounded-pill px-3 flex-grow-1" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                                    <i class="bi bi-pencil me-2"></i>Edit
+                                </button>
+                                <button class="btn btn-outline-primary rounded-pill px-3 flex-grow-1" data-bs-toggle="modal" data-bs-target="#createPostModal">
+                                    <i class="bi bi-plus-square me-2"></i>Post
+                                </button>
+                                <button class="btn btn-outline-secondary rounded-pill px-3 flex-grow-1" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                                    <i class="bi bi-gear me-2"></i>Settings
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <div class="text-muted small" id="profileEmail"></div>
+                        <div class="mt-1" id="profileBio">No bio yet</div>
+                    </div>
                 </div>
             </div>
 
             <!-- Posts Grid -->
-            <div id="postsGrid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px;">
-                <div class="text-center py-5 text-muted" style="grid-column: 1 / -1;">
+            <div id="postsGrid" class="posts-grid">
+                <div class="text-center py-5 text-muted posts-grid__empty">
                     <i class="bi bi-camera fs-1 d-block mb-3"></i>
                     <p>No posts yet</p>
                 </div>
@@ -103,7 +114,7 @@ export async function ProfileComponent(container) {
                     </div>
                     <div class="modal-body">
                         <div class="mb-3 text-center">
-                            <div id="editProfileAvatar" class="mx-auto mb-2" style="width: 80px; height: 80px; border-radius: 50%; overflow: hidden; background: #f0f0f0; display: flex; align-items: center; justify-content: center;">
+                            <div id="editProfileAvatar" class="mx-auto mb-2 profile-avatar profile-avatar--md">
                                 <i class="bi bi-person-circle" style="font-size: 80px;"></i>
                             </div>
                             <button type="button" class="btn btn-sm btn-outline-primary" onclick="document.getElementById('editProfileImage').click()">
@@ -346,7 +357,7 @@ export async function ProfileComponent(container) {
             
             if (snapshot.empty) {
                 postsGrid.innerHTML = `
-                    <div class="text-center py-5 text-muted" style="grid-column: 1 / -1;">
+                    <div class="text-center py-5 text-muted posts-grid__empty">
                         <i class="bi bi-camera fs-1 d-block mb-3"></i>
                         <p>No posts yet. Create your first post!</p>
                     </div>
@@ -377,26 +388,20 @@ export async function ProfileComponent(container) {
     function renderPostThumbnail(post) {
         const postsGrid = document.getElementById('postsGrid');
         const postThumb = document.createElement('div');
-        postThumb.style.cssText = 'position: relative; padding-bottom: 100%; overflow: hidden; cursor: pointer; background: #f0f0f0;';
+        postThumb.className = 'post-thumb';
         
         postThumb.innerHTML = `
             <img src="${post.imageUrl || 'https://via.placeholder.com/300'}" 
                  alt="Post" 
-                 style="position: absolute; width: 100%; height: 100%; object-fit: cover;">
-            <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; color: white; gap: 20px;" class="post-overlay">
+                 class="post-thumb__img">
+            <div class="post-thumb__overlay">
                 <span><i class="bi bi-heart-fill"></i> ${post.likes || 0}</span>
                 <span><i class="bi bi-chat-fill"></i> ${post.commentsCount || 0}</span>
             </div>
         `;
-        
-        postThumb.addEventListener('mouseenter', () => {
-            postThumb.querySelector('.post-overlay').style.display = 'flex';
-        });
-        postThumb.addEventListener('mouseleave', () => {
-            postThumb.querySelector('.post-overlay').style.display = 'none';
-        });
+
         postThumb.addEventListener('click', () => {
-            router.navigate('/feed');
+            router.navigate(`/post/${post.id}`);
         });
         
         postsGrid.appendChild(postThumb);

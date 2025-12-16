@@ -1,0 +1,90 @@
+/*
+  Bootstrap-first modern theme overrides.
+  Loaded after Bootstrap + style.css.
+  Uses CSS variables so the UI stays consistent without changing app logic.
+*/
+
+:root,
+[data-bs-theme="light"] {
+  /* Brand */
+  --app-primary: #6366f1; /* indigo */
+  --app-primary-rgb: 99, 102, 241;
+  --app-bg: #f5f7fb;
+  --app-surface: #ffffff;
+  --app-text: #0f172a;
+  --app-muted: #64748b;
+  --app-border: #e5e7eb;
+
+  /* Map app variables (existing code) */
+  --primary-color: var(--app-primary);
+  --secondary-color: var(--app-text);
+  --text-muted: var(--app-muted);
+  --border-color: var(--app-border);
+  --bg-light: var(--app-bg);
+  --message-sent: var(--app-primary);
+  --message-received: #eef2ff;
+
+  /* Bootstrap variables */
+  --bs-primary: var(--app-primary);
+  --bs-primary-rgb: var(--app-primary-rgb);
+  --bs-body-color: var(--app-text);
+  --bs-body-bg: var(--app-bg);
+  --bs-secondary-color: var(--app-muted);
+  --bs-border-color: var(--app-border);
+  --bs-link-color: var(--app-primary);
+  --bs-link-hover-color: #4f46e5;
+
+  /* Radii */
+  --bs-border-radius: 0.75rem;
+  --bs-border-radius-sm: 0.625rem;
+  --bs-border-radius-lg: 1rem;
+}
+
+body {
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+
+/* Surfaces */
+#app-header,
+#app-footer {
+  background: var(--app-surface);
+}
+
+.card {
+  background: var(--app-surface);
+  border-color: var(--app-border);
+}
+
+/* Inputs */
+.form-control:focus {
+  box-shadow: 0 0 0 0.25rem rgba(var(--app-primary-rgb), 0.15);
+}
+
+/* Bottom nav */
+#app-footer .nav-link {
+  color: var(--app-muted);
+}
+
+#app-footer .nav-link.active,
+#app-footer .nav-link.active i {
+  color: var(--app-primary) !important;
+}
+
+/* Buttons */
+.btn-primary {
+  border-color: transparent;
+}
+
+.btn-primary:hover {
+  filter: brightness(0.96);
+}
+
+.btn-outline-primary {
+  border-color: rgba(var(--app-primary-rgb), 0.35);
+}
+
+/* Header avatar */
+#header-avatar {
+  border-color: var(--app-border);
+}
