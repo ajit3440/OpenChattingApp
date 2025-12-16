@@ -38,9 +38,9 @@ export async function ProfileComponent(container) {
                     <div id="profileAvatar" style="width: 100px; height: 100px; border-radius: 50%; overflow: hidden; background: #f0f0f0; display: flex; align-items: center; justify-content: center;">
                         <i class="bi bi-person-circle" style="font-size: 100px;"></i>
                     </div>
-                    <button class="btn btn-primary btn-sm rounded-circle position-absolute bottom-0 end-0" 
-                            style="width: 35px; height: 35px; padding: 0;"
-                            onclick="document.getElementById('profileImageInput').click()">
+                    <button class="btn btn-primary btn-sm rounded-circle position-absolute" 
+                            id="cameraBtn"
+                            style="width: 40px; height: 40px; padding: 0; bottom: 0; right: 0; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
                         <i class="bi bi-camera-fill"></i>
                     </button>
                     <input type="file" id="profileImageInput" accept="image/*" style="display: none;">
@@ -242,6 +242,9 @@ export async function ProfileComponent(container) {
     await loadProfile();
 
     // Event listeners
+    document.getElementById('cameraBtn').addEventListener('click', () => {
+        document.getElementById('profileImageInput').click();
+    });
     document.getElementById('saveProfileBtn').addEventListener('click', saveProfile);
     document.getElementById('createPostBtn').addEventListener('click', createPost);
     document.getElementById('postImage').addEventListener('change', handleImagePreview);
@@ -264,15 +267,28 @@ export async function ProfileComponent(container) {
                 const userData = userDoc.data();
                 
                 // Display profile info
-                document.getElementById('profileName').textContent = userData.displayName || 'User';
+                const displayName = userData.displayName || 'User';
+                const initials = displayName.charAt(0).toUpperCase();
+                
+                document.getElementById('profileName').textContent = displayName;
                 document.getElementById('profileEmail').textContent = userData.email;
                 document.getElementById('profileBio').textContent = userData.bio || 'No bio yet';
                 
+                // Set avatar with fallback to initials
+                const profileAvatar = document.getElementById('profileAvatar');
+                const editProfileAvatar = document.getElementById('editProfileAvatar');
+                
                 if (userData.photoURL) {
-                    document.getElementById('profileAvatar').innerHTML = 
+                    profileAvatar.innerHTML = 
+                        `<img src="${userData.photoURL}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div class="bg-primary text-white d-none align-items-center justify-content-center" style="width: 100%; height: 100%; font-size: 40px; font-weight: bold;">${initials}</div>`;
+                    editProfileAvatar.innerHTML = 
                         `<img src="${userData.photoURL}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
-                    document.getElementById('editProfileAvatar').innerHTML = 
-                        `<img src="${userData.photoURL}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
+                } else {
+                    profileAvatar.innerHTML = 
+                        `<div class="bg-primary text-white d-flex align-items-center justify-content-center" style="width: 100%; height: 100%; font-size: 40px; font-weight: bold;">${initials}</div>`;
+                    editProfileAvatar.innerHTML = 
+                        `<div class="bg-primary text-white d-flex align-items-center justify-content-center" style="width: 100%; height: 100%; font-size: 32px; font-weight: bold;">${initials}</div>`;
                 }
                 
                 // Show private badge
