@@ -234,10 +234,18 @@ function renderMessage(message) {
     const senderName = isGroupChat && !isOwnMessage && message.senderName ? 
         `<small class="text-muted d-block mb-1"><strong>${message.senderName}</strong></small>` : '';
     
+    // Render different message types
+    let messageContent = '';
+    if (message.type === 'gif') {
+        messageContent = `<div class="message-media"><img src="${message.gifUrl}" alt="GIF"></div>`;
+    } else {
+        messageContent = `<p class="mb-1">${escapeHtml(message.text)}</p>`;
+    }
+    
     messageDiv.innerHTML = `
         <div class="message-bubble">
             ${senderName}
-            <p class="mb-1">${escapeHtml(message.text)}</p>
+            ${messageContent}
             <small class="message-time">${timestamp}</small>
         </div>
     `;
@@ -266,17 +274,24 @@ document.getElementById('messageForm')?.addEventListener('submit', async (e) => 
 });
 
 // Send direct message
-async function sendDirectMessage(messageText) {
+async function sendDirectMessage(messageText, type = 'text', gifUrl = '') {
     const chatId = [currentUser.uid, selectedUserId].sort().join('_');
     
     try {
-        await addDoc(collection(db, 'chats', chatId, 'messages'), {
+        const messageData = {
             text: messageText,
             senderId: currentUser.uid,
             receiverId: selectedUserId,
             timestamp: serverTimestamp(),
-            read: false
-        });
+            read: false,
+            type: type
+        };
+        
+        if (type === 'gif') {
+            messageData.gifUrl = gifUrl;
+        }
+        
+        await addDoc(collection(db, 'chats', chatId, 'messages'), messageData);
         
         await setDoc(doc(db, 'chats', chatId), {
             participants: [currentUser.uid, selectedUserId],
@@ -291,17 +306,24 @@ async function sendDirectMessage(messageText) {
 }
 
 // Send group message
-async function sendGroupMessage(messageText) {
+async function sendGroupMessage(messageText, type = 'text', gifUrl = '') {
     try {
-        await addDoc(collection(db, 'groups', selectedGroupId, 'messages'), {
+        const messageData = {
             text: messageText,
             senderId: currentUser.uid,
             senderName: currentUser.displayName || 'User',
-            timestamp: serverTimestamp()
-        });
+            timestamp: serverTimestamp(),
+            type: type
+        };
+        
+        if (type === 'gif') {
+            messageData.gifUrl = gifUrl;
+        }
+        
+        await addDoc(collection(db, 'groups', selectedGroupId, 'messages'), messageData);
         
         await updateDoc(doc(db, 'groups', selectedGroupId), {
-            lastMessage: messageText,
+            lastMessage: type === 'gif' ? 'GIF' : messageText,
             lastMessageTime: serverTimestamp(),
             lastMessageBy: currentUser.uid
         });
@@ -637,3 +659,320 @@ function hideChatOnMobile() {
         document.querySelector('.chat-main')?.classList.remove('chat-active');
     }
 }
+
+// ========== EMOJI AND GIF FUNCTIONALITY ==========
+
+// Popular GIFs from CDN (Giphy media URLs)
+const popularGifs = [
+    { url: 'https://media.giphy.com/media/g9582DNuQppxC/giphy.gif', title: 'Thumbs Up' },
+    { url: 'https://media.giphy.com/media/3oz8xAFtqoOUUrsh7W/giphy.gif', title: 'Clapping' },
+    { url: 'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif', title: 'Happy Dance' },
+    { url: 'https://media.giphy.com/media/XreQmk7ETCak0/giphy.gif', title: 'Excited' },
+    { url: 'https://media.giphy.com/media/111ebonMs90YLu/giphy.gif', title: 'Dancing' },
+    { url: 'https://media.giphy.com/media/26gsspfbt1HfVQ9va/giphy.gif', title: 'LOL' },
+    { url: 'https://media.giphy.com/media/3o7btPCcdNniyf0ArS/giphy.gif', title: 'Heart' },
+    { url: 'https://media.giphy.com/media/26u4cqiYI30juCOGY/giphy.gif', title: 'High Five' },
+    { url: 'https://media.giphy.com/media/3oz8xIsloV7zOmt81G/giphy.gif', title: 'OK' },
+    { url: 'https://media.giphy.com/media/l0HlBO7eyXzSZkJri/giphy.gif', title: 'Shocked' },
+    { url: 'https://media.giphy.com/media/26BRBKqUiq586bRVm/giphy.gif', title: 'Thinking' },
+    { url: 'https://media.giphy.com/media/l3q2XhfQ8oCkm1Ts4/giphy.gif', title: 'Cool' },
+    { url: 'https://media.giphy.com/media/3o7btZ1Gm7ZL25pLMs/giphy.gif', title: 'Celebrate' },
+    { url: 'https://media.giphy.com/media/KYElw07kzDspaBOwf9/giphy.gif', title: 'Fire' },
+    { url: 'https://media.giphy.com/media/l0MYGb1LuZ3n7dRnO/giphy.gif', title: 'Crying Laugh' },
+    { url: 'https://media.giphy.com/media/3o6Zt6KHxJTbXCnSvu/giphy.gif', title: 'Yes!' },
+    { url: 'https://media.giphy.com/media/26tknCqiJrBQG6bxC/giphy.gif', title: 'Wave' },
+    { url: 'https://media.giphy.com/media/26gsjCZpPolPr3sBy/giphy.gif', title: 'Mind Blown' },
+    { url: 'https://media.giphy.com/media/l0HlvtIPzPdt2usKs/giphy.gif', title: 'Sleepy' },
+    { url: 'https://media.giphy.com/media/26u4lOMA8JKSnL9Uk/giphy.gif', title: 'Love' }
+];
+
+// Common emojis
+const emojis = [
+    '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃',
+    '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙',
+    '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔',
+    '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥',
+    '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮',
+    '🤧', '🥵', '🥶', '😶‍🌫️', '🥴', '😵', '🤯', '🤠', '🥳', '😎',
+    '🤓', '🧐', '😕', '😟', '🙁', '☹️', '😮', '😯', '😲', '😳',
+    '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖',
+    '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬',
+    '👍', '👎', '👌', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉',
+    '👆', '👇', '☝️', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✍️',
+    '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔',
+    '❤️‍🔥', '❤️‍🩹', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟',
+    '🔥', '⭐', '🌟', '✨', '💫', '💥', '💯', '✅', '❌', '⚠️'
+];
+
+let emojiPickerOpen = false;
+let gifPickerOpen = false;
+let gifSearchTimeout = null;
+
+// Initialize emoji picker
+function initializeEmojiPicker() {
+    const emojiPickerBody = document.querySelector('.emoji-picker-body');
+    emojiPickerBody.innerHTML = '';
+    
+    emojis.forEach(emoji => {
+        const emojiItem = document.createElement('div');
+        emojiItem.className = 'emoji-item';
+        emojiItem.textContent = emoji;
+        emojiItem.addEventListener('click', () => {
+            insertEmoji(emoji);
+        });
+        emojiPickerBody.appendChild(emojiItem);
+    });
+}
+
+// Insert emoji at cursor position
+function insertEmoji(emoji) {
+    const messageInput = document.getElementById('messageInput');
+    const start = messageInput.selectionStart;
+    const end = messageInput.selectionEnd;
+    const text = messageInput.value;
+    
+    messageInput.value = text.substring(0, start) + emoji + text.substring(end);
+    messageInput.focus();
+    messageInput.selectionStart = messageInput.selectionEnd = start + emoji.length;
+}
+
+// Toggle emoji picker
+document.getElementById('emojiBtn')?.addEventListener('click', () => {
+    const emojiPicker = document.getElementById('emojiPicker');
+    const gifPicker = document.getElementById('gifPicker');
+    
+    if (!emojiPickerOpen) {
+        initializeEmojiPicker();
+    }
+    
+    emojiPicker.classList.toggle('d-none');
+    gifPicker.classList.add('d-none');
+    emojiPickerOpen = !emojiPickerOpen;
+    gifPickerOpen = false;
+});
+
+// Emoji search
+document.getElementById('emojiSearch')?.addEventListener('input', (e) => {
+    const searchTerm = e.target.value.toLowerCase();
+    const emojiItems = document.querySelectorAll('.emoji-item');
+    
+    emojiItems.forEach(item => {
+        // Simple filter - can be enhanced with emoji names
+        item.style.display = searchTerm ? 'none' : 'block';
+    });
+});
+
+// Toggle GIF picker
+document.getElementById('gifBtn')?.addEventListener('click', () => {
+    const gifPicker = document.getElementById('gifPicker');
+    const emojiPicker = document.getElementById('emojiPicker');
+    
+    gifPicker.classList.toggle('d-none');
+    emojiPicker.classList.add('d-none');
+    gifPickerOpen = !gifPickerOpen;
+    emojiPickerOpen = false;
+    
+    if (gifPickerOpen) {
+        // Show popular GIFs by default
+        loadPopularGifs();
+    }
+});
+
+// Load popular GIFs from CDN
+function loadPopularGifs() {
+    const gifPickerBody = document.getElementById('gifPickerBody');
+    gifPickerBody.innerHTML = '';
+    
+    popularGifs.forEach(gif => {
+        const gifItem = document.createElement('div');
+        gifItem.className = 'gif-item';
+        gifItem.title = gif.title;
+        
+        const img = document.createElement('img');
+        img.src = gif.url;
+        img.alt = gif.title;
+        img.loading = 'lazy';
+        
+        gifItem.appendChild(img);
+        gifItem.addEventListener('click', () => {
+            sendGif(gif.url);
+        });
+        
+        gifPickerBody.appendChild(gifItem);
+    });
+}
+
+// Search GIFs using Giphy API
+async function searchGifs(searchTerm) {
+    // Using Giphy's public beta key for demo - replace with your own key for production
+    const apiKey = 'sXpGFDGZs0Dv1mmNFvYaGUvYwKX0PWIh'; // Giphy public beta key
+    const limit = 20;
+    const endpoint = searchTerm === 'trending' 
+        ? `https://api.giphy.com/v1/gifs/trending?api_key=${apiKey}&limit=${limit}&rating=g`
+        : `https://api.giphy.com/v1/gifs/search?api_key=${apiKey}&q=${encodeURIComponent(searchTerm)}&limit=${limit}&rating=g`;
+    
+    const gifPickerBody = document.getElementById('gifPickerBody');
+    gifPickerBody.innerHTML = '<div class="text-center text-muted p-3"><div class="spinner-border spinner-border-sm"></div><p class="mt-2">Loading...</p></div>';
+    
+    try {
+        const response = await fetch(endpoint);
+        const data = await response.json();
+        
+        if (data.data && data.data.length > 0) {
+            renderGifs(data.data);
+        } else {
+            gifPickerBody.innerHTML = `
+                <div class="text-center text-muted p-3">
+                    <p>No GIFs found</p>
+                    <small>Try a different search term</small>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error fetching GIFs:', error);
+        gifPickerBody.innerHTML = `
+            <div class="text-center text-muted p-3">
+                <p>Failed to load GIFs</p>
+                <small>Check your internet connection</small>
+                <br>
+                <button class="btn btn-sm btn-outline-primary mt-2" onclick="document.getElementById('popularGifTab').click()">Show Popular GIFs</button>
+            </div>
+        `;
+    }
+}
+
+// Render GIFs in picker
+function renderGifs(gifs) {
+    const gifPickerBody = document.getElementById('gifPickerBody');
+    gifPickerBody.innerHTML = '';
+    
+    if (gifs.length === 0) {
+        gifPickerBody.innerHTML = '<div class="text-center text-muted p-3">No GIFs found</div>';
+        return;
+    }
+    
+    gifs.forEach(gif => {
+        const gifItem = document.createElement('div');
+        gifItem.className = 'gif-item';
+        
+        const img = document.createElement('img');
+        img.src = gif.images.fixed_height_small.url;
+        img.alt = gif.title;
+        img.loading = 'lazy';
+        
+        gifItem.appendChild(img);
+        gifItem.addEventListener('click', () => {
+            sendGif(gif.images.fixed_height.url);
+        });
+        
+        gifPickerBody.appendChild(gifItem);
+    });
+}
+
+// Send GIF as message
+async function sendGif(gifUrl) {
+    if (isGroupChat && selectedGroupId) {
+        await sendGroupMessage('', 'gif', gifUrl);
+    } else if (selectedUserId) {
+        await sendDirectMessage('', 'gif', gifUrl);
+    }
+    
+    // Close GIF picker
+    document.getElementById('gifPicker').classList.add('d-none');
+    gifPickerOpen = false;
+}
+
+// GIF search with debounce
+document.getElementById('gifSearch')?.addEventListener('input', (e) => {
+    clearTimeout(gifSearchTimeout);
+    const searchTerm = e.target.value.trim();
+    
+    gifSearchTimeout = setTimeout(() => {
+        if (searchTerm) {
+            searchGifs(searchTerm);
+        } else {
+            searchGifs('trending');
+        }
+    }, 500);
+});
+
+// Tab switching for GIF picker
+document.getElementById('popularGifTab')?.addEventListener('click', () => {
+    loadPopularGifs();
+});
+
+document.getElementById('searchGifTab')?.addEventListener('click', () => {
+    const searchInput = document.getElementById('gifSearch');
+    const searchTerm = searchInput.value.trim();
+    if (searchTerm) {
+        searchGifs(searchTerm);
+    } else {
+        searchGifs('trending');
+    }
+});
+
+// Close pickers when clicking outside
+document.addEventListener('click', (e) => {
+    const emojiPicker = document.getElementById('emojiPicker');
+    const gifPicker = document.getElementById('gifPicker');
+    const emojiBtn = document.getElementById('emojiBtn');
+    const gifBtn = document.getElementById('gifBtn');
+    
+    if (emojiPickerOpen && !emojiPicker.contains(e.target) && !emojiBtn.contains(e.target)) {
+        emojiPicker.classList.add('d-none');
+        emojiPickerOpen = false;
+    }
+    
+    if (gifPickerOpen && !gifPicker.contains(e.target) && !gifBtn.contains(e.target)) {
+        gifPicker.classList.add('d-none');
+        gifPickerOpen = false;
+    }
+});
+
+// Send GIF from URL
+document.getElementById('sendGifUrl')?.addEventListener('click', () => {
+    const gifUrlInput = document.getElementById('gifUrl');
+    const url = gifUrlInput.value.trim();
+    
+    if (!url) {
+        alert('Please enter a GIF URL');
+        return;
+    }
+    
+    // Validate URL
+    if (!isValidGifUrl(url)) {
+        alert('Please enter a valid GIF URL (.gif, .webp, or giphy.com link)');
+        return;
+    }
+    
+    sendGif(url);
+    gifUrlInput.value = '';
+});
+
+// Validate GIF URL
+function isValidGifUrl(url) {
+    try {
+        const urlObj = new URL(url);
+        const pathname = urlObj.pathname.toLowerCase();
+        
+        // Check if it's a valid image URL
+        return pathname.endsWith('.gif') || 
+               pathname.endsWith('.webp') || 
+               pathname.endsWith('.mp4') ||
+               urlObj.hostname.includes('giphy.com') ||
+               urlObj.hostname.includes('tenor.com') ||
+               urlObj.hostname.includes('imgur.com');
+    } catch {
+        return false;
+    }
+}
+
+// Allow Enter key to send GIF URL
+document.getElementById('gifUrl')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('sendGifUrl').click();
+    }
+});
+
+

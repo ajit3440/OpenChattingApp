@@ -894,6 +894,113 @@ body.feed-page {
     height: auto;
 }
 
+/* Emoji Picker */
+.emoji-picker {
+    position: absolute;
+    bottom: 70px;
+    left: 10px;
+    width: 320px;
+    max-width: calc(100% - 20px);
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1000;
+}
+
+.emoji-picker-header {
+    background: var(--bg-color);
+}
+
+.emoji-picker-body {
+    height: 280px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+}
+
+.emoji-item {
+    font-size: 1.5rem;
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    text-align: center;
+    transition: background 0.2s;
+    user-select: none;
+}
+
+.emoji-item:hover {
+    background: var(--bg-color);
+}
+
+/* GIF Picker */
+.gif-picker {
+    position: absolute;
+    bottom: 70px;
+    left: 10px;
+    width: 350px;
+    max-width: calc(100% - 20px);
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1000;
+    max-height: 450px;
+    display: flex;
+    flex-direction: column;
+}
+
+.gif-picker-header {
+    background: var(--bg-color);
+    flex-shrink: 0;
+}
+
+.gif-picker-body {
+    height: 320px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    flex: 1;
+}
+
+.gif-item {
+    cursor: pointer;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform 0.2s;
+    position: relative;
+    padding-top: 100%;
+}
+
+.gif-item img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.gif-item:hover {
+    transform: scale(1.05);
+}
+
+/* Message with media */
+.message-media {
+    max-width: 250px;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 4px;
+}
+
+.message-media img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
 /* Utility Classes */
 .text-primary {
     color: var(--primary-color) !important;
