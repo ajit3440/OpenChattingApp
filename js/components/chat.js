@@ -13,6 +13,7 @@ import {
     orderBy,
     onSnapshot,
     updateDoc,
+    deleteDoc,
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
@@ -26,6 +27,18 @@ let dmMetaByUserId = new Map(); // otherUserId -> { unread, lastMessage, lastMs 
 let pendingGifUrl = null;
 let gifSearchTimeout = null;
 let gifPanelOpen = false;
+
+// Calls (WebRTC + Firestore signaling)
+let callDocUnsub = null;
+let callOfferCandidatesUnsub = null;
+let callAnswerCandidatesUnsub = null;
+let activeCallChatId = null;
+let activeCallType = null; // 'audio' | 'video'
+let activeCallRole = null; // 'caller' | 'callee'
+let peerConnection = null;
+let localStream = null;
+let remoteStream = null;
+let pendingIncomingCall = null; // { chatId, callData }
 
 export async function ChatComponent(container) {
     const currentUser = auth.currentUser;
@@ -91,13 +104,44 @@ export async function ChatComponent(container) {
                                     <i class="bi bi-arrow-left fs-4"></i>
                                 </button>
                                 <img id="chatUserAvatar" src="" class="rounded-circle me-3" width="40" height="40" alt="User" style="display: none;">
-                                <div class="flex-grow-1">
-                                    <h6 class="mb-0" id="chatUserName">User</h6>
+                                <div class="flex-grow-1" style="min-width: 0;">
+                                    <h6 class="mb-0 text-truncate" id="chatUserName">User</h6>
                                     <small class="text-muted" id="chatUserStatus">Offline</small>
                                 </div>
-                                <button class="btn btn-sm btn-outline-primary ms-2" id="newGroupBtnHeader" type="button" aria-label="New group">
+                                <div class="d-flex align-items-center gap-2 flex-shrink-0" id="callButtons">
+                                    <button class="btn btn-sm btn-outline-secondary" id="voiceCallBtn" type="button" aria-label="Voice call" disabled>
+                                        <i class="bi bi-telephone"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary" id="videoCallBtn" type="button" aria-label="Video call" disabled>
+                                        <i class="bi bi-camera-video"></i>
+                                    </button>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary ms-2 flex-shrink-0" id="newGroupBtnHeader" type="button" aria-label="New group">
                                     <i class="bi bi-people"></i>
                                 </button>
+                            </div>
+                        </div>
+
+                        <!-- Call Overlay (in-chat) -->
+                        <div id="callOverlay" class="call-overlay" style="display: none;">
+                            <div class="call-surface border rounded bg-body">
+                                <div class="d-flex align-items-center justify-content-between p-2 border-bottom">
+                                    <div class="fw-semibold" id="callTitle">Call</div>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="endCallBtn">
+                                        <i class="bi bi-telephone-x"></i>
+                                    </button>
+                                </div>
+                                <div class="p-2">
+                                    <video id="remoteVideo" autoplay playsinline class="w-100 rounded border" style="max-height: 320px; display: none;"></video>
+                                    <video id="localVideo" autoplay playsinline muted class="rounded border" style="width: 120px; height: 120px; object-fit: cover; display: none;"></video>
+                                    <audio id="remoteAudio" autoplay style="display: none;"></audio>
+
+                                    <div class="d-flex align-items-center justify-content-between mt-2" id="incomingCallActions" style="display: none;">
+                                        <button class="btn btn-outline-secondary" id="declineCallBtn" type="button">Decline</button>
+                                        <button class="btn btn-primary" id="answerCallBtn" type="button">Answer</button>
+                                    </div>
+                                    <div class="text-muted small mt-2" id="callStatusText"></div>
+                                </div>
                             </div>
                         </div>
 
@@ -109,16 +153,24 @@ export async function ChatComponent(container) {
                         <!-- Message Input -->
                         <div class="border-top p-3" style="flex-shrink: 0;">
                             <form id="messageForm" class="d-flex gap-2">
-                                <button type="button" class="btn btn-outline-secondary" id="newGroupBtnComposer" aria-label="New group">
-                                    <i class="bi bi-people"></i>
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary" id="emojiBtn" aria-label="Emoji">
-                                    <i class="bi bi-emoji-smile"></i>
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary" id="gifBtn" aria-label="GIF">
-                                    GIF
-                                </button>
                                 <div class="message-input-wrap flex-grow-1" style="min-width: 0;" id="messageInputWrap">
+                                    <div class="composer-actions">
+                                        <button type="button" class="btn btn-outline-secondary" id="newGroupBtnComposer" aria-label="New group">
+                                            <i class="bi bi-people"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" id="voiceCallBtnComposer" aria-label="Voice call" disabled>
+                                            <i class="bi bi-telephone"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" id="videoCallBtnComposer" aria-label="Video call" disabled>
+                                            <i class="bi bi-camera-video"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" id="emojiBtn" aria-label="Emoji">
+                                            <i class="bi bi-emoji-smile"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" id="gifBtn" aria-label="GIF">
+                                            GIF
+                                        </button>
+                                    </div>
                                     <div class="gif-preview-inbox" id="gifPreviewInBox" style="display: none;">
                                         <img id="gifInputThumb" alt="Selected GIF" />
                                         <button type="button" class="btn btn-sm btn-light p-0 gif-remove" id="removeGifBtn" aria-label="Remove GIF">
@@ -184,6 +236,22 @@ export async function ChatComponent(container) {
             .message {
                 margin-bottom: 1rem;
                 display: flex;
+            }
+
+            .call-overlay {
+                position: absolute;
+                inset: 0;
+                z-index: 5;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 16px;
+                background: rgba(0, 0, 0, 0.25);
+            }
+            .call-surface {
+                width: 100%;
+                max-width: 520px;
+                background: var(--bs-body-bg);
             }
 
             #messageForm {
@@ -302,6 +370,16 @@ export async function ChatComponent(container) {
                 min-height: 44px;
                 max-width: 100%;
             }
+
+            .composer-actions {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+            .composer-actions .btn {
+                flex: 0 0 auto;
+            }
             .message-input-wrap:focus-within {
                 border-color: var(--bs-primary);
                 box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.15);
@@ -385,6 +463,13 @@ export async function ChatComponent(container) {
     document.getElementById('removeGifBtn')?.addEventListener('click', clearPendingGif);
     document.getElementById('createGroupBtn')?.addEventListener('click', createGroupFromModal);
     document.getElementById('gifSearchInput')?.addEventListener('input', onGifSearchInput);
+    document.getElementById('voiceCallBtn')?.addEventListener('click', () => startOutgoingCall('audio'));
+    document.getElementById('videoCallBtn')?.addEventListener('click', () => startOutgoingCall('video'));
+    document.getElementById('voiceCallBtnComposer')?.addEventListener('click', () => startOutgoingCall('audio'));
+    document.getElementById('videoCallBtnComposer')?.addEventListener('click', () => startOutgoingCall('video'));
+    document.getElementById('endCallBtn')?.addEventListener('click', hangUpCall);
+    document.getElementById('answerCallBtn')?.addEventListener('click', answerIncomingCall);
+    document.getElementById('declineCallBtn')?.addEventListener('click', declineIncomingCall);
 
     // Close pickers/panels when clicking outside
     document.addEventListener('click', (e) => {
@@ -704,6 +789,10 @@ export async function ChatComponent(container) {
 
         await markChatRead(selectedChat.chatId);
 
+        // Enable call buttons for DMs and attach call listener for this chat
+        setCallButtonsEnabled(true);
+        attachCallListener(selectedChat.chatId);
+
         // Load messages
         await loadMessages(selectedChat.chatId);
         
@@ -719,6 +808,10 @@ export async function ChatComponent(container) {
             chatId: group.id,
             group
         };
+
+        // Disable call buttons in groups (DM-only calling)
+        setCallButtonsEnabled(false);
+        detachCallListener();
 
         document.querySelectorAll('.user-list-item, .group-list-item').forEach(item => item.classList.remove('active'));
         const selectedItem = document.querySelector(`[data-chat-id="${group.id}"]`);
@@ -916,6 +1009,9 @@ export async function ChatComponent(container) {
 
         const chatContainer = document.getElementById('chatContainer');
         if (chatContainer) chatContainer.style.display = 'none';
+
+        setCallButtonsEnabled(false);
+        detachCallListener();
     }
 
     function toggleEmojiPicker() {
@@ -1189,6 +1285,83 @@ export async function ChatComponent(container) {
         }
     }
 
+    function setCallButtonsEnabled(enabled) {
+        const voiceBtn = document.getElementById('voiceCallBtn');
+        const videoBtn = document.getElementById('videoCallBtn');
+        if (voiceBtn) voiceBtn.disabled = !enabled;
+        if (videoBtn) videoBtn.disabled = !enabled;
+
+        const voiceBtnComposer = document.getElementById('voiceCallBtnComposer');
+        const videoBtnComposer = document.getElementById('videoCallBtnComposer');
+        if (voiceBtnComposer) voiceBtnComposer.disabled = !enabled;
+        if (videoBtnComposer) videoBtnComposer.disabled = !enabled;
+    }
+
+    function showCallOverlay(show) {
+        const overlay = document.getElementById('callOverlay');
+        if (overlay) overlay.style.display = show ? 'flex' : 'none';
+    }
+
+    function setCallUi({ title, status, incomingActions, showRemoteVideo, showLocalVideo, showRemoteAudio }) {
+        const titleEl = document.getElementById('callTitle');
+        const statusEl = document.getElementById('callStatusText');
+        const incomingEl = document.getElementById('incomingCallActions');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const localVideo = document.getElementById('localVideo');
+        const remoteAudio = document.getElementById('remoteAudio');
+
+        if (titleEl && title != null) titleEl.textContent = title;
+        if (statusEl && status != null) statusEl.textContent = status;
+        if (incomingEl) incomingEl.style.display = incomingActions ? 'flex' : 'none';
+        if (remoteVideo) remoteVideo.style.display = showRemoteVideo ? 'block' : 'none';
+        if (localVideo) localVideo.style.display = showLocalVideo ? 'block' : 'none';
+        if (remoteAudio) remoteAudio.style.display = showRemoteAudio ? 'block' : 'none';
+    }
+
+    function detachCallListener() {
+        if (callDocUnsub) callDocUnsub();
+        callDocUnsub = null;
+    }
+
+    function attachCallListener(chatId) {
+        if (!chatId) return;
+        detachCallListener();
+
+        const callDocRef = doc(db, 'chats', chatId, 'call', 'active');
+        callDocUnsub = onSnapshot(callDocRef, (snap) => {
+            if (!snap.exists()) {
+                // Call ended/cleared
+                if (activeCallChatId === chatId) {
+                    resetCallState();
+                }
+                return;
+            }
+
+            const data = snap.data() || {};
+
+            // Incoming offer
+            if (data.status === 'offer' && data.from && data.from !== currentUser.uid) {
+                pendingIncomingCall = { chatId, callData: data };
+                showCallOverlay(true);
+                setCallUi({
+                    title: data.type === 'video' ? 'Incoming video call' : 'Incoming voice call',
+                    status: 'Incoming call…',
+                    incomingActions: true,
+                    showRemoteVideo: false,
+                    showLocalVideo: false,
+                    showRemoteAudio: false
+                });
+                return;
+            }
+
+            // If we are caller waiting for answer
+            if (activeCallChatId === chatId && activeCallRole === 'caller' && data.status === 'answer' && data.answer) {
+                // Handled by startOutgoingCall listener when it sees answer; keep snapshot alive.
+                return;
+            }
+        });
+    }
+
     function sanitizeHttpUrl(url) {
         if (!url) return null;
         try {
@@ -1200,11 +1373,303 @@ export async function ChatComponent(container) {
         }
     }
 
+    function getRtcConfig() {
+        return {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
+    }
+
+    function resetCallState() {
+        activeCallChatId = null;
+        activeCallType = null;
+        activeCallRole = null;
+        pendingIncomingCall = null;
+
+        if (callOfferCandidatesUnsub) callOfferCandidatesUnsub();
+        if (callAnswerCandidatesUnsub) callAnswerCandidatesUnsub();
+        callOfferCandidatesUnsub = null;
+        callAnswerCandidatesUnsub = null;
+
+        if (peerConnection) {
+            try { peerConnection.onicecandidate = null; } catch {}
+            try { peerConnection.ontrack = null; } catch {}
+            try { peerConnection.close(); } catch {}
+        }
+        peerConnection = null;
+
+        if (localStream) {
+            try { localStream.getTracks().forEach(t => t.stop()); } catch {}
+        }
+        localStream = null;
+
+        remoteStream = null;
+
+        const remoteVideo = document.getElementById('remoteVideo');
+        const localVideo = document.getElementById('localVideo');
+        const remoteAudio = document.getElementById('remoteAudio');
+        if (remoteVideo) remoteVideo.srcObject = null;
+        if (localVideo) localVideo.srcObject = null;
+        if (remoteAudio) remoteAudio.srcObject = null;
+
+        showCallOverlay(false);
+    }
+
+    async function safeDeleteCollectionDocs(colRef) {
+        const snap = await getDocs(colRef);
+        const deletions = [];
+        snap.forEach((d) => deletions.push(deleteDoc(d.ref)));
+        await Promise.allSettled(deletions);
+    }
+
+    async function startOutgoingCall(type) {
+        if (!selectedChat || selectedChat.type !== 'dm') return;
+        const chatId = selectedChat.chatId;
+        if (!chatId) return;
+
+        // If call already active, don't start another
+        const callDocRef = doc(db, 'chats', chatId, 'call', 'active');
+        const existing = await getDoc(callDocRef);
+        if (existing.exists()) {
+            const data = existing.data() || {};
+            if (data.status && data.status !== 'ended') {
+                alert('A call is already in progress.');
+                return;
+            }
+        }
+
+        activeCallChatId = chatId;
+        activeCallType = type;
+        activeCallRole = 'caller';
+
+        showCallOverlay(true);
+        setCallUi({
+            title: type === 'video' ? 'Video call' : 'Voice call',
+            status: 'Calling…',
+            incomingActions: false,
+            showRemoteVideo: type === 'video',
+            showLocalVideo: type === 'video',
+            showRemoteAudio: type !== 'video'
+        });
+
+        peerConnection = new RTCPeerConnection(getRtcConfig());
+        remoteStream = new MediaStream();
+
+        const remoteVideo = document.getElementById('remoteVideo');
+        const localVideo = document.getElementById('localVideo');
+        const remoteAudio = document.getElementById('remoteAudio');
+        if (remoteVideo) remoteVideo.srcObject = remoteStream;
+        if (remoteAudio) remoteAudio.srcObject = remoteStream;
+
+        localStream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: type === 'video'
+        });
+
+        // Show local preview for video calls
+        if (type === 'video' && localVideo) {
+            localVideo.style.display = 'block';
+            localVideo.srcObject = localStream;
+        }
+
+        localStream.getTracks().forEach((track) => peerConnection.addTrack(track, localStream));
+
+        peerConnection.ontrack = (event) => {
+            event.streams[0].getTracks().forEach((t) => remoteStream.addTrack(t));
+        };
+
+        const offerCandidatesRef = collection(db, 'chats', chatId, 'call', 'active', 'offerCandidates');
+        const answerCandidatesRef = collection(db, 'chats', chatId, 'call', 'active', 'answerCandidates');
+
+        peerConnection.onicecandidate = (event) => {
+            if (!event.candidate) return;
+            addDoc(offerCandidatesRef, event.candidate.toJSON());
+        };
+
+        const offerDescription = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offerDescription);
+
+        await setDoc(callDocRef, {
+            status: 'offer',
+            type,
+            from: currentUser.uid,
+            to: selectedUserId,
+            createdAt: serverTimestamp(),
+            offer: {
+                type: offerDescription.type,
+                sdp: offerDescription.sdp
+            }
+        }, { merge: true });
+
+        // Listen for answer
+        if (callDocUnsub) callDocUnsub();
+        callDocUnsub = onSnapshot(callDocRef, async (snap) => {
+            const data = snap.data();
+            if (!data) return;
+
+            if (data.status === 'answer' && data.answer && !peerConnection.currentRemoteDescription) {
+                const answerDesc = new RTCSessionDescription(data.answer);
+                await peerConnection.setRemoteDescription(answerDesc);
+                setCallUi({
+                    title: type === 'video' ? 'Video call' : 'Voice call',
+                    status: 'Connected',
+                    incomingActions: false,
+                    showRemoteVideo: type === 'video',
+                    showLocalVideo: type === 'video',
+                    showRemoteAudio: type !== 'video'
+                });
+            }
+
+            if (data.status === 'ended') {
+                resetCallState();
+            }
+        });
+
+        // Listen for remote ICE candidates
+        callAnswerCandidatesUnsub = onSnapshot(answerCandidatesRef, (snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+                if (change.type !== 'added') return;
+                const candidate = new RTCIceCandidate(change.doc.data());
+                peerConnection.addIceCandidate(candidate);
+            });
+        });
+    }
+
+    async function answerIncomingCall() {
+        if (!pendingIncomingCall) return;
+        const { chatId, callData } = pendingIncomingCall;
+        if (!chatId || !callData?.offer) return;
+
+        activeCallChatId = chatId;
+        activeCallType = callData.type || 'audio';
+        activeCallRole = 'callee';
+        pendingIncomingCall = null;
+
+        setCallUi({
+            title: activeCallType === 'video' ? 'Video call' : 'Voice call',
+            status: 'Connecting…',
+            incomingActions: false,
+            showRemoteVideo: activeCallType === 'video',
+            showLocalVideo: activeCallType === 'video',
+            showRemoteAudio: activeCallType !== 'video'
+        });
+
+        const callDocRef = doc(db, 'chats', chatId, 'call', 'active');
+        const offerCandidatesRef = collection(db, 'chats', chatId, 'call', 'active', 'offerCandidates');
+        const answerCandidatesRef = collection(db, 'chats', chatId, 'call', 'active', 'answerCandidates');
+
+        peerConnection = new RTCPeerConnection(getRtcConfig());
+        remoteStream = new MediaStream();
+
+        const remoteVideo = document.getElementById('remoteVideo');
+        const localVideo = document.getElementById('localVideo');
+        const remoteAudio = document.getElementById('remoteAudio');
+        if (remoteVideo) remoteVideo.srcObject = remoteStream;
+        if (remoteAudio) remoteAudio.srcObject = remoteStream;
+
+        localStream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: activeCallType === 'video'
+        });
+
+        if (activeCallType === 'video' && localVideo) {
+            localVideo.style.display = 'block';
+            localVideo.srcObject = localStream;
+        }
+
+        localStream.getTracks().forEach((track) => peerConnection.addTrack(track, localStream));
+        peerConnection.ontrack = (event) => {
+            event.streams[0].getTracks().forEach((t) => remoteStream.addTrack(t));
+        };
+
+        peerConnection.onicecandidate = (event) => {
+            if (!event.candidate) return;
+            addDoc(answerCandidatesRef, event.candidate.toJSON());
+        };
+
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(callData.offer));
+        const answerDescription = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answerDescription);
+
+        await updateDoc(callDocRef, {
+            status: 'answer',
+            answer: {
+                type: answerDescription.type,
+                sdp: answerDescription.sdp
+            }
+        });
+
+        // Listen for remote ICE candidates from caller
+        callOfferCandidatesUnsub = onSnapshot(offerCandidatesRef, (snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+                if (change.type !== 'added') return;
+                const candidate = new RTCIceCandidate(change.doc.data());
+                peerConnection.addIceCandidate(candidate);
+            });
+        });
+
+        // Listen for end
+        if (callDocUnsub) callDocUnsub();
+        callDocUnsub = onSnapshot(callDocRef, (snap) => {
+            const data = snap.data();
+            if (!data) return;
+            if (data.status === 'ended') resetCallState();
+        });
+
+        setCallUi({
+            title: activeCallType === 'video' ? 'Video call' : 'Voice call',
+            status: 'Connected',
+            incomingActions: false,
+            showRemoteVideo: activeCallType === 'video',
+            showLocalVideo: activeCallType === 'video',
+            showRemoteAudio: activeCallType !== 'video'
+        });
+    }
+
+    async function declineIncomingCall() {
+        if (!pendingIncomingCall) {
+            showCallOverlay(false);
+            return;
+        }
+        const { chatId } = pendingIncomingCall;
+        pendingIncomingCall = null;
+        try {
+            const callDocRef = doc(db, 'chats', chatId, 'call', 'active');
+            await updateDoc(callDocRef, { status: 'ended' });
+        } catch {}
+        showCallOverlay(false);
+    }
+
+    async function hangUpCall() {
+        const chatId = activeCallChatId || selectedChat?.chatId;
+        try {
+            if (chatId) {
+                const callDocRef = doc(db, 'chats', chatId, 'call', 'active');
+                await updateDoc(callDocRef, { status: 'ended' });
+            }
+        } catch {}
+
+        // Best-effort cleanup docs (optional)
+        try {
+            if (chatId) {
+                await safeDeleteCollectionDocs(collection(db, 'chats', chatId, 'call', 'active', 'offerCandidates'));
+                await safeDeleteCollectionDocs(collection(db, 'chats', chatId, 'call', 'active', 'answerCandidates'));
+                await deleteDoc(doc(db, 'chats', chatId, 'call', 'active'));
+            }
+        } catch {}
+
+        resetCallState();
+    }
+
     // Cleanup function
     return () => {
         if (usersListener) usersListener();
         if (messagesListener) messagesListener();
         if (groupsListener) groupsListener();
+        detachCallListener();
+        resetCallState();
         window.removeEventListener('beforeunload', beforeUnloadHandler);
         updateUserStatus(false);
     };
