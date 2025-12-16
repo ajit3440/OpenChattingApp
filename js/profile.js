@@ -82,6 +82,8 @@ async function loadStats() {
 
 // Load user posts
 async function loadUserPosts() {
+    const postsGrid = document.getElementById('postsGrid');
+    
     try {
         const postsQuery = query(
             collection(db, 'posts'),
@@ -90,7 +92,6 @@ async function loadUserPosts() {
         );
         
         const snapshot = await getDocs(postsQuery);
-        const postsGrid = document.getElementById('postsGrid');
         
         if (snapshot.empty) {
             postsGrid.innerHTML = `
@@ -109,6 +110,52 @@ async function loadUserPosts() {
         });
     } catch (error) {
         console.error('Error loading posts:', error);
+        
+        // If orderBy fails (missing index), try without ordering
+        try {
+            const fallbackQuery = query(
+                collection(db, 'posts'),
+                where('userId', '==', currentUser.uid)
+            );
+            
+            const snapshot = await getDocs(fallbackQuery);
+            
+            if (snapshot.empty) {
+                postsGrid.innerHTML = `
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-camera fs-1 d-block mb-3"></i>
+                        <p>No posts yet. Create your first post!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            postsGrid.innerHTML = '';
+            
+            // Sort manually by createdAt
+            const posts = [];
+            snapshot.forEach((doc) => {
+                posts.push({ id: doc.id, ...doc.data() });
+            });
+            
+            posts.sort((a, b) => {
+                const timeA = a.createdAt?.toMillis() || 0;
+                const timeB = b.createdAt?.toMillis() || 0;
+                return timeB - timeA;
+            });
+            
+            posts.forEach(post => renderPostThumbnail(post));
+            
+        } catch (fallbackError) {
+            console.error('Fallback query also failed:', fallbackError);
+            postsGrid.innerHTML = `
+                <div class="text-center py-5 text-danger">
+                    <i class="bi bi-exclamation-triangle fs-1 d-block mb-3"></i>
+                    <p>Error loading posts. Please try again.</p>
+                    <small>${fallbackError.message}</small>
+                </div>
+            `;
+        }
     }
 }
 
