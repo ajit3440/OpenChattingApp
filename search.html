@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" class="profile-page">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="theme-color" content="#0095f6">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Search - ChatApp</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💬</text></svg>">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="profile-page">
+    <!-- Navigation -->
+    <nav class="navbar navbar-light bg-white border-bottom sticky-top">
+        <div class="container">
+            <a href="feed.html" class="btn btn-link text-dark">
+                <i class="bi bi-arrow-left fs-4"></i>
+            </a>
+            <h5 class="mb-0">Search</h5>
+            <a href="notifications.html" class="btn btn-link text-dark position-relative">
+                <i class="bi bi-bell fs-4"></i>
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationBadge" style="display: none; font-size: 0.6rem;">
+                    0
+                </span>
+            </a>
+        </div>
+    </nav>
+
+    <div class="container py-3" style="max-width: 600px;">
+        <!-- Search Bar -->
+        <div class="mb-4">
+            <div class="input-group">
+                <span class="input-group-text bg-light border-0">
+                    <i class="bi bi-search"></i>
+                </span>
+                <input type="text" class="form-control border-0 bg-light" id="searchInput" placeholder="Search users...">
+                <button class="btn btn-outline-secondary" id="clearSearch" style="display: none;">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Search Results -->
+        <div id="searchResults">
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-search fs-1 d-block mb-3"></i>
+                <p>Search for users to follow</p>
+            </div>
+        </div>
+
+        <!-- Suggested Users -->
+        <div id="suggestedUsers" class="mt-5">
+            <h6 class="text-muted mb-3">Suggested for you</h6>
+            <div id="suggestedList">
+                <div class="text-center py-3 text-muted">
+                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                    <p class="mt-2">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav d-md-none">
+        <a href="feed.html" class="bottom-nav-item">
+            <i class="bi bi-house-door"></i>
+            <span>Home</span>
+        </a>
+        <a href="search.html" class="bottom-nav-item active">
+            <i class="bi bi-search"></i>
+            <span>Search</span>
+        </a>
+        <a href="profile.html" class="bottom-nav-item">
+            <i class="bi bi-plus-square"></i>
+            <span>Post</span>
+        </a>
+        <a href="chat.html" class="bottom-nav-item">
+            <i class="bi bi-chat-dots"></i>
+            <span>Chat</span>
+        </a>
+        <a href="profile.html" class="bottom-nav-item">
+            <i class="bi bi-person"></i>
+            <span>Profile</span>
+        </a>
+    </nav>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Search JS -->
+    <script type="module" src="js/notification-badge.js"></script>
+    <script type="module" src="js/search.js"></script>
+</body>
+</html>
