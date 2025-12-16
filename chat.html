@@ -148,6 +148,12 @@
                     <!-- Message Input -->
                     <div class="message-input">
                         <form id="messageForm" class="d-flex align-items-center p-3">
+                            <button type="button" class="btn btn-link text-secondary" id="emojiBtn">
+                                <i class="bi bi-emoji-smile fs-5"></i>
+                            </button>
+                            <button type="button" class="btn btn-link text-secondary" id="gifBtn">
+                                <i class="bi bi-file-image fs-5"></i>
+                            </button>
                             <button type="button" class="btn btn-link text-secondary" id="attachBtn">
                                 <i class="bi bi-paperclip fs-5"></i>
                             </button>
@@ -156,6 +162,55 @@
                                 <i class="bi bi-send-fill"></i>
                             </button>
                         </form>
+                        
+                        <!-- Emoji Picker -->
+                        <div class="emoji-picker d-none" id="emojiPicker">
+                            <div class="emoji-picker-header p-2 border-bottom">
+                                <input type="text" class="form-control form-control-sm" id="emojiSearch" placeholder="Search emoji...">
+                            </div>
+                            <div class="emoji-picker-body p-2">
+                                <!-- Emojis will be loaded here -->
+                            </div>
+                        </div>
+                        
+                        <!-- GIF Picker -->
+                        <div class="gif-picker d-none" id="gifPicker">
+                            <div class="gif-picker-header p-2 border-bottom">
+                                <ul class="nav nav-pills nav-fill mb-2" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active small py-1" id="popularGifTab" data-bs-toggle="pill" data-bs-target="#popularGifPanel" type="button">Popular</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link small py-1" id="searchGifTab" data-bs-toggle="pill" data-bs-target="#searchGifPanel" type="button">Search</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link small py-1" id="urlGifTab" data-bs-toggle="pill" data-bs-target="#urlGifPanel" type="button">URL</button>
+                                    </li>
+                                </ul>
+                                <div class="tab-content">
+                                    <div class="tab-pane fade show active" id="popularGifPanel">
+                                        <small class="text-muted">Popular GIFs</small>
+                                    </div>
+                                    <div class="tab-pane fade" id="searchGifPanel">
+                                        <input type="text" class="form-control form-control-sm" id="gifSearch" placeholder="Search GIFs...">
+                                    </div>
+                                    <div class="tab-pane fade" id="urlGifPanel">
+                                        <div class="input-group input-group-sm">
+                                            <input type="url" class="form-control form-control-sm" id="gifUrl" placeholder="Paste GIF URL...">
+                                            <button class="btn btn-primary btn-sm" type="button" id="sendGifUrl">Send</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="gif-picker-body p-2" id="gifPickerBody">
+                                <div class="text-center text-muted">
+                                    <div class="spinner-border spinner-border-sm" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p class="mt-2">Loading GIFs...</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
