@@ -23,6 +23,12 @@ class Router {
     // Handle route change
     async handleRoute() {
         const path = window.location.hash.slice(1) || '/feed';
+
+        // If the user clicks the active tab/link again, some browsers still
+        // fire a hashchange event; avoid re-mounting the same route.
+        if (path === this.currentRoute) {
+            return;
+        }
         
         // Cleanup previous route
         if (this.cleanup) {
@@ -104,6 +110,9 @@ class Router {
 
     // Navigate to a route
     navigate(path) {
+        const currentPath = window.location.hash.slice(1) || '/feed';
+        if (currentPath === path) return;
+
         window.location.hash = path;
     }
 
@@ -129,6 +138,7 @@ import { UserProfileComponent } from './components/user-profile.js';
 import { SearchComponent } from './components/search.js';
 import { NotificationsComponent } from './components/notifications.js';
 import { ChatComponent } from './components/chat.js';
+import { PostComponent } from './components/post.js';
 
 router.register('/', LoginComponent);
 router.register('/login', LoginComponent);
@@ -138,3 +148,4 @@ router.register('/user-profile/:userId', UserProfileComponent);
 router.register('/search', SearchComponent);
 router.register('/notifications', NotificationsComponent);
 router.register('/chat', ChatComponent);
+router.register('/post/:postId', PostComponent);

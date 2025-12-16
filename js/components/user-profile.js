@@ -287,7 +287,7 @@ export async function UserProfileComponent(container, params) {
                 postThumb.addEventListener('mouseleave', () => {
                     postThumb.querySelector('.post-overlay').style.display = 'none';
                 });
-                postThumb.addEventListener('click', () => router.navigate('/feed'));
+                postThumb.addEventListener('click', () => router.navigate(`/post/${post.id}`));
                 
                 postsGrid.appendChild(postThumb);
             });

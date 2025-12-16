@@ -418,45 +418,28 @@ export async function ProfileComponent(container) {
         
         try {
             let photoURL = currentUser.photoURL;
-            let useAuthUpdate = false;
             
-            // Upload new image if selected
+            // Upload new image if selected (base64 only)
             if (imageFile) {
-                try {
-                    photoURL = await uploadProfileImage(imageFile);
-                    useAuthUpdate = true; // Storage URLs are short
-                } catch (storageError) {
-                    console.warn('Firebase Storage failed, using base64:', storageError);
-                    // Fallback to base64
-                    const reader = new FileReader();
-                    photoURL = await new Promise((resolve, reject) => {
-                        reader.onload = (e) => resolve(e.target.result);
-                        reader.onerror = reject;
-                        reader.readAsDataURL(imageFile);
-                    });
-                    useAuthUpdate = false; // base64 too long for Auth
-                }
+                const reader = new FileReader();
+                photoURL = await new Promise((resolve, reject) => {
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(imageFile);
+                });
             }
             
-            // Update Firestore (always)
+            // Update Firestore
             await updateDoc(doc(db, 'users', currentUser.uid), {
                 displayName: name,
                 bio: bio,
                 photoURL: photoURL
             });
             
-            // Update Auth profile (only if using Storage URL)
-            if (useAuthUpdate && photoURL) {
-                await updateProfile(currentUser, {
-                    displayName: name,
-                    photoURL: photoURL
-                });
-            } else {
-                // Update only name in Auth
-                await updateProfile(currentUser, {
-                    displayName: name
-                });
-            }
+            // Update Auth profile (name only - base64 too long for photoURL)
+            await updateProfile(currentUser, {
+                displayName: name
+            });
             
             editProfileModal.hide();
             await loadProfile();
@@ -490,42 +473,21 @@ export async function ProfileComponent(container) {
         avatar.innerHTML = '<div class="spinner-border text-primary" role="status"></div>';
         
         try {
-            // Try Firebase Storage first
-            try {
-                const photoURL = await uploadProfileImage(file);
-                
-                // Update Firestore
-                await updateDoc(doc(db, 'users', currentUser.uid), {
-                    photoURL: photoURL
-                });
-                
-                // Update Auth (Storage URLs are short enough)
-                await updateProfile(currentUser, {
-                    photoURL: photoURL
-                });
-                
-                avatar.innerHTML = 
-                    `<img src="${photoURL}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
-                return;
-            } catch (storageError) {
-                console.warn('Firebase Storage failed, using base64:', storageError);
-                
-                // Fallback to base64 (Firestore only - Auth has URL length limit)
-                const reader = new FileReader();
-                const photoURL = await new Promise((resolve, reject) => {
-                    reader.onload = (e) => resolve(e.target.result);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(file);
-                });
-                
-                // Update ONLY Firestore (not Auth - base64 too long)
-                await updateDoc(doc(db, 'users', currentUser.uid), {
-                    photoURL: photoURL
-                });
-                
-                avatar.innerHTML = 
-                    `<img src="${photoURL}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
-            }
+            // Use base64 only (no Storage needed)
+            const reader = new FileReader();
+            const photoURL = await new Promise((resolve, reject) => {
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+            
+            // Update ONLY Firestore (base64 too long for Auth)
+            await updateDoc(doc(db, 'users', currentUser.uid), {
+                photoURL: photoURL
+            });
+            
+            avatar.innerHTML = 
+                `<img src="${photoURL}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
         } catch (error) {
             console.error('Error uploading profile image:', error);
             alert('Failed to upload image: ' + error.message);

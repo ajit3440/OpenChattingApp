@@ -176,6 +176,14 @@ export async function FeedComponent(container) {
         postElement.querySelector('.comment-btn')?.addEventListener('click', () => openComments(post.id));
         postElement.querySelector('.view-comments-btn')?.addEventListener('click', () => openComments(post.id));
         postElement.querySelector('.share-btn')?.addEventListener('click', () => sharePost(post));
+
+        // Open Post page when clicking the post itself (but not action buttons / profile elements)
+        postElement.addEventListener('click', (e) => {
+            if (e.target.closest('.like-btn, .comment-btn, .view-comments-btn, .share-btn, [data-user-id]')) {
+                return;
+            }
+            router.navigate(`/post/${post.id}`);
+        });
         
         // Profile navigation
         postElement.querySelectorAll('[data-user-id]').forEach(el => {

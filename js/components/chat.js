@@ -28,8 +28,8 @@ export async function ChatComponent(container) {
     }
 
     container.innerHTML = `
-        <div class="container-fluid p-0" style="height: calc(100vh - 140px);">
-            <div class="row g-0 h-100">
+        <div class="container-fluid p-0" style="height: calc(100vh - 126px); position: relative;">
+            <div class="row g-0 h-100" id="chatLayout">
                 <!-- User List Sidebar -->
                 <div class="col-md-4 col-lg-3 border-end h-100" id="userListSidebar" style="overflow-y: auto;">
                     <div class="p-3 border-bottom">
@@ -45,9 +45,9 @@ export async function ChatComponent(container) {
                 </div>
 
                 <!-- Chat Area -->
-                <div class="col-md-8 col-lg-9 d-flex flex-column h-100" id="chatArea">
+                <div class="col-md-8 col-lg-9 h-100 position-relative" id="chatArea" style="background: white;">
                     <!-- Welcome Screen -->
-                    <div class="d-flex align-items-center justify-content-center h-100" id="welcomeScreen">
+                    <div class="position-absolute w-100 h-100 d-flex align-items-center justify-content-center" id="welcomeScreen" style="top: 0; left: 0; z-index: 1;">
                         <div class="text-center">
                             <i class="bi bi-chat-heart fs-1 text-primary mb-3 d-block"></i>
                             <h5>Welcome to Messages</h5>
@@ -56,14 +56,14 @@ export async function ChatComponent(container) {
                     </div>
 
                     <!-- Chat Container -->
-                    <div class="d-none flex-column h-100" id="chatContainer">
+                    <div class="flex-column w-100 h-100" id="chatContainer" style="position: absolute; top: 0; left: 0; z-index: 2; background: white; display: none;">
                         <!-- Chat Header -->
-                        <div class="border-bottom p-3">
+                        <div class="border-bottom p-3" style="flex-shrink: 0;">
                             <div class="d-flex align-items-center">
                                 <button class="btn btn-link d-md-none p-0 me-2" id="backToList">
                                     <i class="bi bi-arrow-left fs-4"></i>
                                 </button>
-                                <img id="chatUserAvatar" src="" class="rounded-circle me-3" width="40" height="40" alt="User">
+                                <img id="chatUserAvatar" src="" class="rounded-circle me-3" width="40" height="40" alt="User" style="display: none;">
                                 <div class="flex-grow-1">
                                     <h6 class="mb-0" id="chatUserName">User</h6>
                                     <small class="text-muted" id="chatUserStatus">Offline</small>
@@ -72,12 +72,12 @@ export async function ChatComponent(container) {
                         </div>
 
                         <!-- Messages Area -->
-                        <div class="flex-grow-1 p-3" id="messagesArea" style="overflow-y: auto; background: #f8f9fa;">
+                        <div class="flex-grow-1 p-3" id="messagesArea" style="overflow-y: auto; background: #f8f9fa; min-height: 0;">
                             <!-- Messages will be loaded here -->
                         </div>
 
                         <!-- Message Input -->
-                        <div class="border-top p-3">
+                        <div class="border-top p-3" style="flex-shrink: 0;">
                             <form id="messageForm" class="d-flex gap-2">
                                 <input type="text" class="form-control" id="messageInput" placeholder="Type a message..." autocomplete="off">
                                 <button type="submit" class="btn btn-primary">
@@ -143,13 +143,17 @@ export async function ChatComponent(container) {
                 margin-left: 5px;
             }
             @media (max-width: 767px) {
-                #userListSidebar {
-                    display: block !important;
-                }
-                #chatArea.show-chat #userListSidebar {
+                /* On mobile, show either the list OR the chat (not stacked). */
+                #chatArea {
                     display: none !important;
                 }
-                #chatArea.show-chat #chatContainer {
+                #chatLayout.show-chat #userListSidebar {
+                    display: none !important;
+                }
+                #chatLayout.show-chat #chatArea {
+                    display: block !important;
+                }
+                #chatLayout.show-chat #chatContainer {
                     display: flex !important;
                 }
             }
@@ -166,7 +170,8 @@ export async function ChatComponent(container) {
     document.getElementById('backToList')?.addEventListener('click', showUserList);
 
     // Update status on page unload
-    window.addEventListener('beforeunload', () => updateUserStatus(false));
+    const beforeUnloadHandler = () => updateUserStatus(false);
+    window.addEventListener('beforeunload', beforeUnloadHandler);
 
     async function updateUserStatus(online) {
         try {
@@ -257,56 +262,90 @@ export async function ChatComponent(container) {
             </div>
         `;
         
-        userItem.addEventListener('click', () => selectUser(user));
+        // Simple click handler
+        userItem.onclick = function() {
+            console.log('User clicked!', user.displayName);
+            selectUser(user);
+        };
+        
         userListElement.appendChild(userItem);
     }
 
     async function selectUser(user) {
+        console.log('Selecting user:', user.uid, user.displayName);
         selectedUserId = user.uid;
         
-        // Update UI
+        // Update UI - remove active from all
         document.querySelectorAll('.user-list-item').forEach(item => {
             item.classList.remove('active');
         });
-        document.querySelector(`[data-user-id="${user.uid}"]`)?.classList.add('active');
         
-        // Show chat container
-        document.getElementById('welcomeScreen').classList.add('d-none');
-        document.getElementById('chatContainer').classList.remove('d-none');
-        document.getElementById('chatContainer').classList.add('d-flex');
+        // Add active to selected
+        const selectedItem = document.querySelector(`[data-user-id="${user.uid}"]`);
+        if (selectedItem) {
+            selectedItem.classList.add('active');
+        }
+        
+        // Get elements
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        const chatContainer = document.getElementById('chatContainer');
+        
+        console.log('Welcome screen:', welcomeScreen);
+        console.log('Chat container:', chatContainer);
+        
+        // Hide welcome screen completely
+        if (welcomeScreen) {
+            welcomeScreen.style.display = 'none';
+        }
+        
+        // Show chat container with flex display
+        if (chatContainer) {
+            chatContainer.style.display = 'flex';
+        }
+        
+        console.log('Chat container display:', chatContainer?.style.display);
         
         // Update chat header
         const userName = user.displayName || 'User';
         const userInitials = userName.charAt(0).toUpperCase();
-        document.getElementById('chatUserName').textContent = userName;
-        document.getElementById('chatUserStatus').textContent = user.online ? 'Online' : 'Offline';
+        
+        const chatUserName = document.getElementById('chatUserName');
+        const chatUserStatus = document.getElementById('chatUserStatus');
+        
+        if (chatUserName) chatUserName.textContent = userName;
+        if (chatUserStatus) chatUserStatus.textContent = user.online ? 'Online' : 'Offline';
         
         const chatAvatar = document.getElementById('chatUserAvatar');
-        if (user.photoURL) {
-            chatAvatar.src = user.photoURL;
-            chatAvatar.style.display = 'block';
-            chatAvatar.onerror = function() {
-                this.style.display = 'none';
+        if (chatAvatar) {
+            if (user.photoURL) {
+                chatAvatar.src = user.photoURL;
+                chatAvatar.style.display = 'block';
+                chatAvatar.onerror = function() {
+                    this.style.display = 'none';
+                    const initialsDiv = document.createElement('div');
+                    initialsDiv.className = 'rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3';
+                    initialsDiv.style.cssText = 'width: 40px; height: 40px; font-weight: bold; min-width: 40px;';
+                    initialsDiv.textContent = userInitials;
+                    this.parentNode.insertBefore(initialsDiv, this);
+                };
+            } else {
+                chatAvatar.style.display = 'none';
                 const initialsDiv = document.createElement('div');
                 initialsDiv.className = 'rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3';
                 initialsDiv.style.cssText = 'width: 40px; height: 40px; font-weight: bold; min-width: 40px;';
                 initialsDiv.textContent = userInitials;
-                this.parentNode.insertBefore(initialsDiv, this);
-            };
-        } else {
-            chatAvatar.style.display = 'none';
-            const initialsDiv = document.createElement('div');
-            initialsDiv.className = 'rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3';
-            initialsDiv.style.cssText = 'width: 40px; height: 40px; font-weight: bold; min-width: 40px;';
-            initialsDiv.textContent = userInitials;
-            chatAvatar.parentNode.insertBefore(initialsDiv, chatAvatar);
+                if (chatAvatar.parentNode) {
+                    chatAvatar.parentNode.insertBefore(initialsDiv, chatAvatar);
+                }
+            }
         }
         
         // Load messages
         await loadMessages(user.uid);
         
         // Show chat on mobile
-        document.getElementById('chatArea').classList.add('show-chat');
+        const chatLayout = document.getElementById('chatLayout');
+        if (chatLayout) chatLayout.classList.add('show-chat');
     }
 
     async function loadMessages(otherUserId) {
@@ -416,9 +455,14 @@ export async function ChatComponent(container) {
     }
 
     function showUserList() {
-        document.getElementById('chatArea').classList.remove('show-chat');
-        document.getElementById('welcomeScreen').classList.remove('d-none');
-        document.getElementById('chatContainer').classList.add('d-none');
+        const chatLayout = document.getElementById('chatLayout');
+        if (chatLayout) chatLayout.classList.remove('show-chat');
+
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        if (welcomeScreen) welcomeScreen.style.display = 'flex';
+
+        const chatContainer = document.getElementById('chatContainer');
+        if (chatContainer) chatContainer.style.display = 'none';
     }
 
     function formatTimestamp(date) {
@@ -445,6 +489,7 @@ export async function ChatComponent(container) {
     return () => {
         if (usersListener) usersListener();
         if (messagesListener) messagesListener();
+        window.removeEventListener('beforeunload', beforeUnloadHandler);
         updateUserStatus(false);
     };
 }
