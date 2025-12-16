@@ -340,279 +340,9 @@ function showSuccess(elementId, message) {
 // ========== FOLLOWER/FOLLOWING FUNCTIONALITY ==========
 
 // Load other user's profile
-async function loadOtherUserProfile(userId) {
-    try {
-        // Clean up previous listener
-        if (targetUserUnsubscribe) {
-            targetUserUnsubscribe();
-        }
-        
-        const userDoc = await getDoc(doc(db, 'users', userId));
-        
-        if (!userDoc.exists()) {
-            window.location.href = 'profile.html';
-            return;
-        }
-        
-        const userData = userDoc.data();
-        
-        // Display profile info
-        document.getElementById('profileName').textContent = userData.displayName || 'User';
-        document.getElementById('profileEmail').textContent = userData.email;
-        document.getElementById('profileBio').textContent = userData.bio || 'No bio yet';
-        
-        if (userData.photoURL) {
-            document.getElementById('profileAvatar').innerHTML = 
-                `<img src="${userData.photoURL}" alt="Profile">`;
-        }
-        
-        // Show private badge if private
-        if (userData.isPrivate) {
-            document.getElementById('accountTypeBadge').style.display = 'inline-block';
-        }
-        
-        // Hide own profile actions, show follow button
-        document.getElementById('ownProfileActions').classList.add('d-none');
-        document.getElementById('otherProfileActions').classList.remove('d-none');
-        
-        // Update follow button state
-        await updateFollowButton(userId, userData);
-        
-        // Load stats
-        await loadOtherUserStats(userId);
-        
-        // Load posts if account is public or user is following
-        const currentUserDoc = await getDoc(doc(db, 'users', currentUser.uid));
-        const currentUserData = currentUserDoc.data();
-        const isFollowing = currentUserData.following?.includes(userId);
-        
-        if (!userData.isPrivate || isFollowing) {
-            await loadOtherUserPosts(userId);
-        } else {
-            document.getElementById('postsGrid').innerHTML = `
-                <div class="text-center py-5 text-muted">
-                    <i class="bi bi-lock fs-1 d-block mb-3"></i>
-                    <p>This account is private</p>
-                    <small>Follow to see their posts</small>
-                </div>
-            `;
-        }
-        
-        // Setup real-time listener for target user changes
-        targetUserUnsubscribe = onSnapshot(doc(db, 'users', userId), async (docSnap) => {
-            if (docSnap.exists()) {
-                const updatedUserData = docSnap.data();
-                await updateFollowButton(userId, updatedUserData);
-                
-                // Reload posts if follow status changed
-                const currentUserDoc = await getDoc(doc(db, 'users', currentUser.uid));
-                const currentUserData = currentUserDoc.data();
-                const isFollowing = currentUserData.following?.includes(userId);
-                
-                if (!updatedUserData.isPrivate || isFollowing) {
-                    await loadOtherUserPosts(userId);
-                } else {
-                    document.getElementById('postsGrid').innerHTML = `
-                        <div class="text-center py-5 text-muted">
-                            <i class="bi bi-lock fs-1 d-block mb-3"></i>
-                            <p>This account is private</p>
-                            <small>Follow to see their posts</small>
-                        </div>
-                    `;
-                }
-            }
-        });
-        
-    } catch (error) {
-        console.error('Error loading other user profile:', error);
-    }
-}
-
-// Update follow button state
-async function updateFollowButton(userId, userData) {
-    const followBtn = document.getElementById('followBtn');
-    const currentUserDoc = await getDoc(doc(db, 'users', currentUser.uid));
-    const currentUserData = currentUserDoc.data();
-    const isFollowing = currentUserData.following?.includes(userId);
-    const hasPendingRequest = userData.followRequests?.includes(currentUser.uid);
-    
-    if (isFollowing) {
-        followBtn.innerHTML = '<i class="bi bi-person-check me-2"></i>Following';
-        followBtn.classList.remove('btn-primary', 'btn-outline-secondary');
-        followBtn.classList.add('btn-outline-primary');
-        followBtn.dataset.status = 'following';
-    } else if (hasPendingRequest) {
-        followBtn.innerHTML = '<i class="bi bi-clock me-2"></i>Requested';
-        followBtn.classList.remove('btn-primary', 'btn-outline-primary');
-        followBtn.classList.add('btn-outline-secondary');
-        followBtn.dataset.status = 'requested';
-    } else if (userData.isPrivate) {
-        followBtn.innerHTML = '<i class="bi bi-lock me-2"></i>Request to Follow';
-        followBtn.classList.remove('btn-outline-primary', 'btn-outline-secondary');
-        followBtn.classList.add('btn-primary');
-        followBtn.dataset.status = 'request';
-    } else {
-        followBtn.innerHTML = '<i class="bi bi-person-plus me-2"></i>Follow';
-        followBtn.classList.remove('btn-outline-primary', 'btn-outline-secondary');
-        followBtn.classList.add('btn-primary');
-        followBtn.dataset.status = 'follow';
-    }
-}
-
-// Load other user stats
-async function loadOtherUserStats(userId) {
-    try {
-        const userDoc = await getDoc(doc(db, 'users', userId));
-        const userData = userDoc.data();
-        
-        const postsQuery = query(
-            collection(db, 'posts'),
-            where('userId', '==', userId)
-        );
-        const postsSnapshot = await getDocs(postsQuery);
-        
-        document.getElementById('postsCount').textContent = postsSnapshot.size;
-        document.getElementById('followersCount').textContent = userData.followers?.length || 0;
-        document.getElementById('followingCount').textContent = userData.following?.length || 0;
-    } catch (error) {
-        console.error('Error loading stats:', error);
-    }
-}
-
-// Load other user's posts
-async function loadOtherUserPosts(userId) {
-    const postsGrid = document.getElementById('postsGrid');
-    
-    try {
-        const postsQuery = query(
-            collection(db, 'posts'),
-            where('userId', '==', userId)
-        );
-        
-        const snapshot = await getDocs(postsQuery);
-        
-        if (snapshot.empty) {
-            postsGrid.innerHTML = `
-                <div class="text-center py-5 text-muted">
-                    <i class="bi bi-camera fs-1 d-block mb-3"></i>
-                    <p>No posts yet</p>
-                </div>
-            `;
-            return;
-        }
-        
-        postsGrid.innerHTML = '';
-        
-        const posts = [];
-        snapshot.forEach((doc) => {
-            posts.push({ id: doc.id, ...doc.data() });
-        });
-        
-        posts.sort((a, b) => {
-            const timeA = a.createdAt?.toMillis() || 0;
-            const timeB = b.createdAt?.toMillis() || 0;
-            return timeB - timeA;
-        });
-        
-        posts.forEach(post => renderPostThumbnail(post));
-    } catch (error) {
-        console.error('Error loading other user posts:', error);
-        postsGrid.innerHTML = `
-            <div class="text-center py-5 text-danger">
-                <i class="bi bi-exclamation-triangle fs-1 d-block mb-3"></i>
-                <p>Error loading posts</p>
-                <small>${error.message}</small>
-            </div>
-        `;
-    }
-}
-
-// Handle follow/unfollow
-document.getElementById('followBtn')?.addEventListener('click', async () => {
-    if (!viewingUserId) return;
-    
-    const followBtn = document.getElementById('followBtn');
-    followBtn.disabled = true;
-    
-    try {
-        const currentUserDoc = await getDoc(doc(db, 'users', currentUser.uid));
-        const currentUserData = currentUserDoc.data();
-        const targetUserDoc = await getDoc(doc(db, 'users', viewingUserId));
-        const targetUserData = targetUserDoc.data();
-        
-        const isFollowing = currentUserData.following?.includes(viewingUserId);
-        const hasPendingRequest = targetUserData.followRequests?.includes(currentUser.uid);
-        
-        if (isFollowing) {
-            // Unfollow
-            await updateDoc(doc(db, 'users', currentUser.uid), {
-                following: arrayRemove(viewingUserId)
-            });
-            
-            await updateDoc(doc(db, 'users', viewingUserId), {
-                followers: arrayRemove(currentUser.uid)
-            });
-        } else if (hasPendingRequest) {
-            // Cancel follow request
-            await updateDoc(doc(db, 'users', viewingUserId), {
-                followRequests: arrayRemove(currentUser.uid)
-            });
-        } else if (targetUserData.isPrivate) {
-            // Send follow request for private account
-            await updateDoc(doc(db, 'users', viewingUserId), {
-                followRequests: arrayUnion(currentUser.uid)
-            });
-            
-            // Create notification
-            await addDoc(collection(db, 'notifications'), {
-                userId: viewingUserId,
-                type: 'follow_request',
-                fromUserId: currentUser.uid,
-                message: `${currentUserData.displayName} wants to follow you`,
-                createdAt: serverTimestamp(),
-                read: false
-            });
-        } else {
-            // Follow public account immediately
-            await updateDoc(doc(db, 'users', currentUser.uid), {
-                following: arrayUnion(viewingUserId)
-            });
-            
-            await updateDoc(doc(db, 'users', viewingUserId), {
-                followers: arrayUnion(currentUser.uid)
-            });
-            
-            // Create notification
-            await addDoc(collection(db, 'notifications'), {
-                userId: viewingUserId,
-                type: 'new_follower',
-                fromUserId: currentUser.uid,
-                message: `${currentUserData.displayName} started following you`,
-                createdAt: serverTimestamp(),
-                read: false
-            });
-        }
-        
-        // Refresh the page
-        await loadOtherUserProfile(viewingUserId);
-    } catch (error) {
-        console.error('Error following/unfollowing:', error);
-        alert('Failed to update. Please try again.');
-    } finally {
-        followBtn.disabled = false;
-    }
-});
-
-// Handle message button
-document.getElementById('messageBtn')?.addEventListener('click', () => {
-    window.location.href = `chat.html?userId=${viewingUserId}`;
-});
-
 // Load followers list
 async function loadFollowersList() {
-    const userId = viewingUserId || currentUser.uid;
-    const isOwnProfile = !viewingUserId || viewingUserId === currentUser.uid;
-    const userDoc = await getDoc(doc(db, 'users', userId));
+    const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
     const userData = userDoc.data();
     const followers = userData.followers || [];
     
@@ -642,11 +372,9 @@ async function loadFollowersList() {
                             <small class="text-muted">${follower.email}</small>
                         </div>
                     </div>
-                    ${isOwnProfile ? `
-                        <button class="btn btn-sm btn-outline-danger remove-follower-btn" data-follower-id="${followerId}">
-                            Remove
-                        </button>
-                    ` : ''}
+                    <button class="btn btn-sm btn-outline-danger remove-follower-btn" data-follower-id="${followerId}">
+                        Remove
+                    </button>
                 </div>
             `;
             
@@ -656,14 +384,12 @@ async function loadFollowersList() {
                 window.location.href = `user-profile.html?userId=${followerId}`;
             });
             
-            // Handle remove follower if it's own profile
-            if (isOwnProfile) {
-                const removeBtn = followerItem.querySelector('.remove-follower-btn');
-                removeBtn.addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    await handleRemoveFollower(followerId, followerItem, follower.displayName);
-                });
-            }
+            // Handle remove follower
+            const removeBtn = followerItem.querySelector('.remove-follower-btn');
+            removeBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                await handleRemoveFollower(followerId, followerItem, follower.displayName);
+            });
             
             followersList.appendChild(followerItem);
         }
@@ -708,8 +434,7 @@ async function handleRemoveFollower(followerId, followerElement, followerName) {
 
 // Load following list
 async function loadFollowingList() {
-    const userId = viewingUserId || currentUser.uid;
-    const userDoc = await getDoc(doc(db, 'users', userId));
+    const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
     const userData = userDoc.data();
     const following = userData.following || [];
     
